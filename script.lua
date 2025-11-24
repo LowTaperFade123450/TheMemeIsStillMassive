@@ -1,8 +1,11 @@
---// Lavender Hub \\--
+-- Lavender Hub Key System (Standalone)
+local Players = game:GetService("Players")
+local CoreGui = game:GetService("CoreGui")
 
--- KEY SYSTEM (RUNS FIRST)
-local keyVerified = false
-local correctKey = "release"  -- lowercase
+local player = Players.LocalPlayer
+
+-- Key Configuration
+local correctKey = "release"
 local discordLink = "https://discord.gg/gn6QbUbt5"
 
 -- Clipboard function
@@ -30,239 +33,165 @@ local function copyToClipboard(text)
 end
 
 -- Create Key System GUI
-local function createKeySystem()
-    local Players = game:GetService("Players")
-    local CoreGui = game:GetService("CoreGui")
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "LavenderHubKeySystem"
+screenGui.Parent = CoreGui
+screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+
+-- Main Frame
+local frame = Instance.new("Frame")
+frame.Size = UDim2.new(0, 400, 0, 300)
+frame.Position = UDim2.new(0.5, -200, 0.5, -150)
+frame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+frame.BorderSizePixel = 0
+frame.Parent = screenGui
+
+local corner = Instance.new("UICorner")
+corner.CornerRadius = UDim.new(0, 12)
+corner.Parent = frame
+
+-- Title Bar
+local titleBar = Instance.new("Frame")
+titleBar.Size = UDim2.new(1, 0, 0, 50)
+titleBar.Position = UDim2.new(0, 0, 0, 0)
+titleBar.BackgroundColor3 = Color3.fromRGB(155, 89, 182)
+titleBar.BorderSizePixel = 0
+titleBar.Parent = frame
+
+local titleCorner = Instance.new("UICorner")
+titleCorner.CornerRadius = UDim.new(0, 12)
+titleCorner.Parent = titleBar
+
+local title = Instance.new("TextLabel")
+title.Size = UDim2.new(1, 0, 1, 0)
+title.Position = UDim2.new(0, 0, 0, 0)
+title.BackgroundTransparency = 1
+title.Text = "🔒 Lavender Hub - Key System"
+title.TextColor3 = Color3.fromRGB(255, 255, 255)
+title.TextSize = 18
+title.Font = Enum.Font.GothamBold
+title.Parent = titleBar
+
+-- Info Label
+local infoLabel = Instance.new("TextLabel")
+infoLabel.Size = UDim2.new(1, -40, 0, 80)
+infoLabel.Position = UDim2.new(0, 20, 0, 60)
+infoLabel.BackgroundTransparency = 1
+infoLabel.Text = "Welcome to Lavender Hub!\n\nEnter the key below to access the script.\nJoin our Discord server to get the key."
+infoLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+infoLabel.TextSize = 14
+infoLabel.TextWrapped = true
+infoLabel.Font = Enum.Font.Gotham
+infoLabel.Parent = frame
+
+-- Discord Button
+local discordButton = Instance.new("TextButton")
+discordButton.Size = UDim2.new(1, -40, 0, 35)
+discordButton.Position = UDim2.new(0, 20, 0, 150)
+discordButton.BackgroundColor3 = Color3.fromRGB(88, 101, 242)
+discordButton.Text = "📱 Join Discord Server (Link Copied)"
+discordButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+discordButton.TextSize = 14
+discordButton.Font = Enum.Font.GothamBold
+discordButton.Parent = frame
+
+local discordCorner = Instance.new("UICorner")
+discordCorner.CornerRadius = UDim.new(0, 6)
+discordCorner.Parent = discordButton
+
+-- Key Input Box
+local keyBox = Instance.new("TextBox")
+keyBox.Size = UDim2.new(1, -40, 0, 40)
+keyBox.Position = UDim2.new(0, 20, 0, 195)
+keyBox.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+keyBox.PlaceholderText = "Enter key here..."
+keyBox.Text = ""
+keyBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+keyBox.TextSize = 16
+keyBox.Font = Enum.Font.Gotham
+keyBox.Parent = frame
+
+local keyCorner = Instance.new("UICorner")
+keyCorner.CornerRadius = UDim.new(0, 6)
+keyCorner.Parent = keyBox
+
+-- Verify Button
+local verifyButton = Instance.new("TextButton")
+verifyButton.Size = UDim2.new(1, -40, 0, 40)
+verifyButton.Position = UDim2.new(0, 20, 0, 245)
+verifyButton.BackgroundColor3 = Color3.fromRGB(46, 204, 113)
+verifyButton.Text = "✅ Verify Key"
+verifyButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+verifyButton.TextSize = 16
+verifyButton.Font = Enum.Font.GothamBold
+verifyButton.Parent = frame
+
+local verifyCorner = Instance.new("UICorner")
+verifyCorner.CornerRadius = UDim.new(0, 6)
+verifyCorner.Parent = verifyButton
+
+-- Status Label
+local statusLabel = Instance.new("TextLabel")
+statusLabel.Size = UDim2.new(1, -40, 0, 20)
+statusLabel.Position = UDim2.new(0, 20, 0, 295)
+statusLabel.BackgroundTransparency = 1
+statusLabel.Text = ""
+statusLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+statusLabel.TextSize = 12
+statusLabel.Font = Enum.Font.Gotham
+statusLabel.Parent = frame
+
+-- Button Animations
+local function animateButton(button)
+    local originalSize = button.Size
+    local originalColor = button.BackgroundColor3
     
-    local screenGui = Instance.new("ScreenGui")
-    screenGui.Name = "LavenderHubKeySystem"
-    screenGui.Parent = CoreGui
-    screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-
-    -- Main Frame
-    local frame = Instance.new("Frame")
-    frame.Size = UDim2.new(0, 400, 0, 300)
-    frame.Position = UDim2.new(0.5, -200, 0.5, -150)
-    frame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-    frame.BorderSizePixel = 0
-    frame.Parent = screenGui
-
-    local corner = Instance.new("UICorner")
-    corner.CornerRadius = UDim.new(0, 12)
-    corner.Parent = frame
-
-    -- Title Bar
-    local titleBar = Instance.new("Frame")
-    titleBar.Size = UDim2.new(1, 0, 0, 50)
-    titleBar.Position = UDim2.new(0, 0, 0, 0)
-    titleBar.BackgroundColor3 = Color3.fromRGB(155, 89, 182)
-    titleBar.BorderSizePixel = 0
-    titleBar.Parent = frame
-
-    local titleCorner = Instance.new("UICorner")
-    titleCorner.CornerRadius = UDim.new(0, 12)
-    titleCorner.Parent = titleBar
-
-    local title = Instance.new("TextLabel")
-    title.Size = UDim2.new(1, 0, 1, 0)
-    title.Position = UDim2.new(0, 0, 0, 0)
-    title.BackgroundTransparency = 1
-    title.Text = "🔒 Lavender Hub - Key System"
-    title.TextColor3 = Color3.fromRGB(255, 255, 255)
-    title.TextSize = 18
-    title.Font = Enum.Font.GothamBold
-    title.Parent = titleBar
-
-    -- Info Label
-    local infoLabel = Instance.new("TextLabel")
-    infoLabel.Size = UDim2.new(1, -40, 0, 80)
-    infoLabel.Position = UDim2.new(0, 20, 0, 60)
-    infoLabel.BackgroundTransparency = 1
-    infoLabel.Text = "Welcome to Lavender Hub!\n\nEnter the key below to access the script.\nJoin our Discord server to get the key."
-    infoLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-    infoLabel.TextSize = 14
-    infoLabel.TextWrapped = true
-    infoLabel.Font = Enum.Font.Gotham
-    infoLabel.Parent = frame
-
-    -- Discord Button
-    local discordButton = Instance.new("TextButton")
-    discordButton.Size = UDim2.new(1, -40, 0, 35)
-    discordButton.Position = UDim2.new(0, 20, 0, 150)
-    discordButton.BackgroundColor3 = Color3.fromRGB(88, 101, 242)
-    discordButton.Text = "📱 Join Discord Server (Link Copied)"
-    discordButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-    discordButton.TextSize = 14
-    discordButton.Font = Enum.Font.GothamBold
-    discordButton.Parent = frame
-
-    local discordCorner = Instance.new("UICorner")
-    discordCorner.CornerRadius = UDim.new(0, 6)
-    discordCorner.Parent = discordButton
-
-    -- Key Input Box
-    local keyBox = Instance.new("TextBox")
-    keyBox.Size = UDim2.new(1, -40, 0, 40)
-    keyBox.Position = UDim2.new(0, 20, 0, 195)
-    keyBox.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
-    keyBox.PlaceholderText = "Enter key here..."
-    keyBox.Text = ""
-    keyBox.TextColor3 = Color3.fromRGB(255, 255, 255)
-    keyBox.TextSize = 16
-    keyBox.Font = Enum.Font.Gotham
-    keyBox.Parent = frame
-
-    local keyCorner = Instance.new("UICorner")
-    keyCorner.CornerRadius = UDim.new(0, 6)
-    keyCorner.Parent = keyBox
-
-    -- Verify Button
-    local verifyButton = Instance.new("TextButton")
-    verifyButton.Size = UDim2.new(1, -40, 0, 40)
-    verifyButton.Position = UDim2.new(0, 20, 0, 245)
-    verifyButton.BackgroundColor3 = Color3.fromRGB(46, 204, 113)
-    verifyButton.Text = "✅ Verify Key"
-    verifyButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-    verifyButton.TextSize = 16
-    verifyButton.Font = Enum.Font.GothamBold
-    verifyButton.Parent = frame
-
-    local verifyCorner = Instance.new("UICorner")
-    verifyCorner.CornerRadius = UDim.new(0, 6)
-    verifyCorner.Parent = verifyButton
-
-    -- Status Label
-    local statusLabel = Instance.new("TextLabel")
-    statusLabel.Size = UDim2.new(1, -40, 0, 20)
-    statusLabel.Position = UDim2.new(0, 20, 0, 295)
-    statusLabel.BackgroundTransparency = 1
-    statusLabel.Text = ""
-    statusLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-    statusLabel.TextSize = 12
-    statusLabel.Font = Enum.Font.Gotham
-    statusLabel.Parent = frame
-
-    -- Button Animations
-    local function animateButton(button)
-        local originalSize = button.Size
-        local originalColor = button.BackgroundColor3
-        
-        button.Size = UDim2.new(0.95, -38, 0, 38)
-        button.Position = button.Position + UDim2.new(0, 1, 0, 1)
-        button.BackgroundColor3 = originalColor:Lerp(Color3.fromRGB(255, 255, 255), 0.3)
-        
-        task.wait(0.1)
-        
-        button.Size = originalSize
-        button.Position = button.Position - UDim2.new(0, 1, 0, 1)
-        button.BackgroundColor3 = originalColor
-    end
-
-    -- Discord Button Click
-    discordButton.MouseButton1Click:Connect(function()
-        animateButton(discordButton)
-        
-        if copyToClipboard(discordLink) then
-            statusLabel.Text = "✅ Discord link copied to clipboard!"
-            statusLabel.TextColor3 = Color3.fromRGB(46, 204, 113)
-        else
-            statusLabel.Text = "❌ Failed to copy link"
-            statusLabel.TextColor3 = Color3.fromRGB(231, 76, 60)
-        end
-        
-        -- Reset status after 3 seconds
-        task.wait(3)
-        if statusLabel.Text:find("copied to clipboard") or statusLabel.Text:find("Failed to copy") then
-            statusLabel.Text = ""
-        end
-    end)
-
-    -- Verify Button Click
-    verifyButton.MouseButton1Click:Connect(function()
-        animateButton(verifyButton)
-        
-        local enteredKey = keyBox.Text
-        if enteredKey:lower() == correctKey then  -- Case insensitive check
-            statusLabel.Text = "✅ Key verified! Loading Lavender Hub..."
-            statusLabel.TextColor3 = Color3.fromRGB(46, 204, 113)
-            
-            -- Animate success
-            verifyButton.BackgroundColor3 = Color3.fromRGB(39, 174, 96)
-            verifyButton.Text = "🎉 Loading..."
-            
-            -- Destroy key system and set verified
-            task.wait(1.5)
-            screenGui:Destroy()
-            keyVerified = true
-        else
-            statusLabel.Text = "❌ Invalid key! Please try again."
-            statusLabel.TextColor3 = Color3.fromRGB(231, 76, 60)
-            
-            -- Shake animation for wrong key
-            local originalPos = keyBox.Position
-            for i = 1, 3 do
-                keyBox.Position = originalPos + UDim2.new(0, 5, 0, 0)
-                task.wait(0.05)
-                keyBox.Position = originalPos - UDim2.new(0, 5, 0, 0)
-                task.wait(0.05)
-            end
-            keyBox.Position = originalPos
-        end
-    end)
-
-    -- Enter key to verify
-    keyBox.FocusLost:Connect(function(enterPressed)
-        if enterPressed then
-            verifyButton.MouseButton1Click:Connect()
-        end
-    end)
-
-    -- Make draggable
-    local dragging = false
-    local dragInput, dragStart, startPos
-
-    titleBar.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 then
-            dragging = true
-            dragStart = input.Position
-            startPos = frame.Position
-            
-            input.Changed:Connect(function()
-                if input.UserInputState == Enum.UserInputState.End then
-                    dragging = false
-                end
-            end)
-        end
-    end)
-
-    titleBar.InputChanged:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseMovement then
-            dragInput = input
-        end
-    end)
-
-    game:GetService("UserInputService").InputChanged:Connect(function(input)
-        if input == dragInput and dragging then
-            local delta = input.Position - dragStart
-            frame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
-        end
-    end)
-
-    return screenGui
-end
-
--- Start Key System
-if not keyVerified then
-    createKeySystem()
-end
-
--- Wait for key verification before continuing
-while not keyVerified do
+    button.Size = UDim2.new(0.95, -38, 0, 38)
+    button.Position = button.Position + UDim2.new(0, 1, 0, 1)
+    button.BackgroundColor3 = originalColor:Lerp(Color3.fromRGB(255, 255, 255), 0.3)
+    
     task.wait(0.1)
+    
+    button.Size = originalSize
+    button.Position = button.Position - UDim2.new(0, 1, 0, 1)
+    button.BackgroundColor3 = originalColor
 end
 
--- MAIN SCRIPT STARTS HERE AFTER KEY VERIFICATION
--- SERVICES (Only load after key verification)
+-- Discord Button Click
+discordButton.MouseButton1Click:Connect(function()
+    animateButton(discordButton)
+    
+    if copyToClipboard(discordLink) then
+        statusLabel.Text = "✅ Discord link copied to clipboard!"
+        statusLabel.TextColor3 = Color3.fromRGB(46, 204, 113)
+    else
+        statusLabel.Text = "❌ Failed to copy link"
+        statusLabel.TextColor3 = Color3.fromRGB(231, 76, 60)
+    end
+    
+    -- Reset status after 3 seconds
+    task.wait(3)
+    if statusLabel.Text:find("copied to clipboard") or statusLabel.Text:find("Failed to copy") then
+        statusLabel.Text = ""
+    end
+end)
+
+-- Verify Button Click
+local function loadMainScript()
+    statusLabel.Text = "✅ Key verified! Loading Lavender Hub..."
+    statusLabel.TextColor3 = Color3.fromRGB(46, 204, 113)
+    
+    -- Animate success
+    verifyButton.BackgroundColor3 = Color3.fromRGB(39, 174, 96)
+    verifyButton.Text = "🎉 Loading..."
+    
+    -- Destroy key system and load main script
+    task.wait(1.5)
+    screenGui:Destroy()
+    
+    -- Load the main Lavender Hub script
+    --// Lavender Hub \\--
+
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -402,12 +331,6 @@ local lastRedBoosterTime = 0
 local lastBlueBoosterTime = 0
 local lastWealthClockTime = 0
 
--- NEW: Hive Claiming System
-local hiveClaimingEnabled = true
-local lastHiveClaimAttempt = 0
-local hiveClaimCooldown = 5
-local claimedHives = {}
-
 -- Sprinkler configurations with exact placement patterns
 local sprinklerConfigs = {
     ["Broken Sprinkler"] = {
@@ -462,87 +385,17 @@ local sprinklerConfigs = {
 
 local player = Players.LocalPlayer
 local events = ReplicatedStorage:WaitForChild("Events", 10)
--- Auto-detect owned hive
-local function getOwnedHive()
-    local hiveObject = player:FindFirstChild("Hive")
-    if hiveObject and hiveObject:IsA("ObjectValue") and hiveObject.Value then
-        local hiveName = hiveObject.Value.Name
-        if hiveCoords[hiveName] then
-            return hiveName
-        end
-    end
-    return nil
-end
 
-local ownedHive = getOwnedHive()
-local displayHiveName = ownedHive and "Hive" or "None"
+-- Auto-dig variables
+local digRunning = false
 
--- NEW: Improved Hive Claiming System
-local function claimHives()
-    if not hiveClaimingEnabled then return end
-    if tick() - lastHiveClaimAttempt < hiveClaimCooldown then return end
-    
-    lastHiveClaimAttempt = tick()
-    
-    for i = 1, 5 do
-        local hiveName = "Hive_" .. i
-        if not claimedHives[hiveName] then
-            local hive = workspace:FindFirstChild("Hives")
-            if hive then
-                local targetHive = hive:FindFirstChild(hiveName)
-                if targetHive then
-                    local args = {targetHive}
-                    local success = pcall(function()
-                        ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("ClaimHive"):FireServer(unpack(args))
-                    end)
-                    
-                    if success then
-                        claimedHives[hiveName] = true
-                        addToConsole("✅ Claimed " .. hiveName)
-                        
-                        -- Check if we got ownership
-                        task.wait(1)
-                        local newHive = getOwnedHive()
-                        if newHive then
-                            ownedHive = newHive
-                            displayHiveName = "Hive"
-                            addToConsole("🎯 Successfully obtained hive: " .. ownedHive)
-                            
-                            -- Start auto farming if enabled
-                            if toggles.autoFarm and not toggles.isFarming then
-                                addToConsole("🚀 Starting auto farm with new hive!")
-                                startFarming()
-                            end
-                            break
-                        end
-                    end
-                end
-            end
-        end
-        task.wait(1) -- Wait 1 second between claims
-    end
-end
+-- Console System
+local consoleLogs = {}
+local maxConsoleLines = 30
+local consoleLabel = nil
 
--- Periodic hive checking function
-local function checkHiveOwnership()
-    if tick() - toggles.lastHiveCheckTime >= HIVE_CHECK_INTERVAL then
-        local previousHive = ownedHive
-        ownedHive = getOwnedHive()
-        
-        if ownedHive and ownedHive ~= previousHive then
-            addToConsole("New hive: " .. ownedHive)
-            displayHiveName = "Hive"
-        elseif not ownedHive and previousHive then
-            addToConsole("Hive lost")
-            displayHiveName = "None"
-        elseif ownedHive and previousHive == nil then
-            addToConsole("Hive acquired: " .. ownedHive)
-            displayHiveName = "Hive"
-        end
-        
-        toggles.lastHiveCheckTime = tick()
-    end
-end
+-- Debug System
+local debugLabels = {}
 
 -- Get current pollen value
 local function getCurrentPollen()
@@ -561,9 +414,8 @@ local function getCurrentHoney()
         end
     end
     return 0
-end
-
--- FIXED: Format numbers with K, M, B, T, Q - CORRECT ORDER
+    end
+    -- FIXED: Format numbers with K, M, B, T, Q - CORRECT ORDER
 local function formatNumberCorrect(num)
     if num < 1000 then
         return tostring(math.floor(num))
@@ -727,8 +579,8 @@ local function loadSettings()
     end
     addToConsole("No saved settings")
     return false
-end
--- NEW: Toys/Boosters Functions
+    end
+    -- NEW: Toys/Boosters Functions
 local function useMountainBooster()
     local args = {
         "Mountain Booster",
@@ -938,127 +790,42 @@ local function updateHoneyStats()
     end
 end
 
--- Console System
-local consoleLogs = {}
-local maxConsoleLines = 30
-local consoleLabel = nil
-
--- Debug System
-local debugLabels = {}
--- NEW: Improved Pathfinding System
-local character, humanoid, rootpart = nil, nil, nil
-local active = false
-local targetPos = nil
-local pathConnection, blockedConnection = nil, nil
-
-local function updateCharacter()
-    character = player.Character
-    if character then
-        humanoid = character:FindFirstChildOfClass("Humanoid")
-        rootpart = character:FindFirstChild("HumanoidRootPart")
+-- Auto-detect owned hive
+local function getOwnedHive()
+    local hiveObject = player:FindFirstChild("Hive")
+    if hiveObject and hiveObject:IsA("ObjectValue") and hiveObject.Value then
+        local hiveName = hiveObject.Value.Name
+        if hiveCoords[hiveName] then
+            return hiveName
+        end
     end
+    return nil
 end
 
-player.CharacterAdded:Connect(updateCharacter)
-updateCharacter()
+local ownedHive = getOwnedHive()
+local displayHiveName = ownedHive and "Hive" or "None"
 
-local function cleanupConnections()
-    if pathConnection then pathConnection:Disconnect() end
-    if blockedConnection then blockedConnection:Disconnect() end
-    pathConnection, blockedConnection = nil, nil
-end
-
-local function createPath(target)
-    local path = PathfindingService:CreatePath({
-        AgentRadius = 2.8,
-        AgentHeight = 5.8,
-        AgentCanJump = true,
-        AgentCanClimb = true,
-        WaypointSpacing = 3.0,
-        Costs = {
-            Water = 25,
-        }
-    })
-
-    local success = pcall(function()
-        path:ComputeAsync(rootpart.Position, target)
-    end)
-
-    return success and path.Status == Enum.PathStatus.Success and path or nil
-end
-
-local function followPath(path)
-    local waypoints = path:GetWaypoints()
-
-    blockedConnection = path.Blocked:Connect(function()
-        cleanupConnections()
-    end)
-
-    for index, waypoint in ipairs(waypoints) do
-        if not active or not rootpart or not rootpart.Parent then
-            return false
+-- Periodic hive checking function
+local function checkHiveOwnership()
+    if tick() - toggles.lastHiveCheckTime >= HIVE_CHECK_INTERVAL then
+        local previousHive = ownedHive
+        ownedHive = getOwnedHive()
+        
+        if ownedHive and ownedHive ~= previousHive then
+            addToConsole("New hive: " .. ownedHive)
+            displayHiveName = "Hive"
+        elseif not ownedHive and previousHive then
+            addToConsole("Hive lost")
+            displayHiveName = "None"
+        elseif ownedHive and previousHive == nil then
+            addToConsole("Hive acquired: " .. ownedHive)
+            displayHiveName = "Hive"
         end
-
-        if waypoint.Action == Enum.PathWaypointAction.Jump then
-            humanoid.Jump = true
-        end
-
-        humanoid:MoveTo(waypoint.Position)
-
-        local startTime = tick()
-        local moveFinishedConnection = nil
-        local reached = false
-
-        moveFinishedConnection = humanoid.MoveToFinished:Connect(function(reach)
-            reached = reach
-            if moveFinishedConnection then moveFinishedConnection:Disconnect() end
-        end)
-
-        repeat
-            RunService.Heartbeat:Wait()
-            local distToWp = (rootpart.Position - waypoint.Position).Magnitude
-            local vel = rootpart.Velocity.Magnitude
-            if distToWp > 4 and vel < 5 then
-                humanoid.Jump = true
-                task.wait(0.1)
-            end
-        until tick() - startTime > (index == 1 and 2 or 4) or not moveFinishedConnection
-
-        if moveFinishedConnection then moveFinishedConnection:Disconnect() end
-
-        if not reached then return false end
+        
+        toggles.lastHiveCheckTime = tick()
     end
-
-    return true
-end
-
-function startPathfinding(target)
-    if not rootpart then return end
-
-    targetPos = target
-    active = true
-    cleanupConnections()
-
-    task.spawn(function()
-        while active and rootpart and rootpart.Parent do
-            local path = createPath(targetPos)
-            if path then
-                local reachedEnd = followPath(path)
-                if reachedEnd then break end
-            end
-            task.wait(0.3)
-        end
-        active = false
-        cleanupConnections()
-    end)
-end
-
-function stopPathfinding()
-    active = false
-    cleanupConnections()
-end
-
--- FIXED SMOOTH TWEEN MOVEMENT SYSTEM
+    end
+    -- FIXED SMOOTH TWEEN MOVEMENT SYSTEM
 local function smoothTweenToPosition(targetPos)
     local character = GetCharacter()
     local humanoid = character:FindFirstChild("Humanoid")
@@ -1152,9 +919,82 @@ local function smoothTweenToPosition(targetPos)
     return movementCompleted
 end
 
--- Improved Walk Movement with NEW Pathfinding
+-- Improved Walk Movement with Pathfinding
 local function moveToPositionWalk(targetPos)
-    return startPathfinding(targetPos)
+    local character = GetCharacter()
+    local humanoid = character:FindFirstChild("Humanoid")
+    local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
+    if not humanoid or not humanoidRootPart then return false end
+    
+    -- Create path using PathfindingService
+    local path = PathfindingService:CreatePath({
+        AgentRadius = 2,
+        AgentHeight = 5,
+        AgentCanJump = true,
+        WaypointSpacing = 4,
+        Costs = {}
+    })
+    
+    local startPos = humanoidRootPart.Position
+    local success = pcall(function()
+        path:ComputeAsync(startPos, targetPos)
+    end)
+    
+    if success and path.Status == Enum.PathStatus.Success then
+        local waypoints = path:GetWaypoints()
+        
+        for i, waypoint in ipairs(waypoints) do
+            if i > 1 then -- Skip first waypoint (current position)
+                humanoid:MoveTo(waypoint.Position)
+                
+                local startTime = tick()
+                while (humanoidRootPart.Position - waypoint.Position).Magnitude > 6 do
+                    if tick() - startTime > 8 then
+                        -- If stuck, try to jump
+                        humanoid.Jump = true
+                        task.wait(0.5)
+                        if tick() - startTime > 12 then
+                            return false
+                        end
+                    end
+                    task.wait(0.1)
+                end
+                
+                -- If this is an action waypoint (jump), make the character jump
+                if waypoint.Action == Enum.PathWaypointAction.Jump then
+                    humanoid.Jump = true
+                    task.wait(0.5)
+                end
+            end
+        end
+        
+        -- Final move to exact target position
+        humanoid:MoveTo(targetPos)
+        local finalStartTime = tick()
+        while (humanoidRootPart.Position - targetPos).Magnitude > 10 do
+            if tick() - finalStartTime > 10 then
+                return false
+            end
+            task.wait(0.1)
+        end
+        
+        return true
+    else
+        -- Fallback to simple movement if pathfinding fails
+        humanoid:MoveTo(targetPos)
+        local startTime = tick()
+        while (humanoidRootPart.Position - targetPos).Magnitude > 10 do
+            if tick() - startTime > 20 then
+                return false
+            end
+            -- Try jumping if stuck
+            if tick() - startTime > 5 and (humanoidRootPart.Position - targetPos).Magnitude < 15 then
+                humanoid.Jump = true
+            end
+            task.wait(0.1)
+        end
+        return true
+    end
 end
 
 -- Main Movement Function
@@ -1206,8 +1046,8 @@ local function performContinuousMovement()
             toggles.currentTarget = nil
         end
     end
-end
--- IMPROVED AUTO SPRINKLERS SYSTEM - MORE STABLE AND RELIABLE
+    end
+    -- IMPROVED AUTO SPRINKLERS SYSTEM - MORE STABLE AND RELIABLE
 local function getFieldFlowerPart(fieldName)
     local fieldsFolder = workspace:WaitForChild("Fields")
     local field = fieldsFolder:WaitForChild(fieldName)
@@ -1432,9 +1272,8 @@ local function changeFieldWhileFarming(newField)
     else
         addToConsole("❌ Failed to reach new field")
     end
-end
-
--- Death respawn system
+    end
+    -- Death respawn system
 local function onCharacterDeath()
     if toggles.autoFarm and toggles.isFarming then
         addToConsole("💀 Character died - respawning to field...")
@@ -1523,9 +1362,6 @@ local function autoEquipTools()
     equipAllTools()
     lastEquipTime = tick()
 end
-
--- Auto-dig variables
-local digRunning = false
 
 -- Auto-dig function - UPDATED FOR ALL TOOLS
 local function DigLoop()
@@ -1631,6 +1467,7 @@ local function shouldReturnToField()
     local currentPollen = getCurrentPollen()
     return currentPollen == 0
 end
+
 -- NEW: Improved converting with ticket converters
 local function startConverting()
     if toggles.isConverting or not ownedHive then return end
@@ -1805,9 +1642,8 @@ local function clearVisitedTokens()
         toggles.visitedTokens = {}
         toggles.lastTokenClearTime = tick()
     end
-end
-
--- UPDATED: Webhook System with new stats
+    end
+    -- UPDATED: Webhook System with new stats
 local function sendWebhook()
     if not webhookEnabled or webhookURL == "" then return end
     
@@ -1920,73 +1756,588 @@ local function sendWebhook()
     end
 end
 
--- LOAD MAIN GUI AFTER KEY VERIFICATION
-if keyVerified then
-    -- Load the main GUI library and create the interface
-    local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/deividcomsono/Obsidian/refs/heads/main/Library.lua"))()
-    local ThemeManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/deividcomsono/Obsidian/main/addons/ThemeManager.lua"))()
-    local SaveManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/deividcomsono/Obsidian/main/addons/SaveManager.lua"))()
+-- GUI Setup
+local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/deividcomsono/Obsidian/refs/heads/main/Library.lua"))()
+local ThemeManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/deividcomsono/Obsidian/main/addons/ThemeManager.lua"))()
+local SaveManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/deividcomsono/Obsidian/main/addons/SaveManager.lua"))()
 
-    -- [Rest of your GUI code would go here...]
-    -- This is where you create all the tabs, toggles, buttons etc.
-    
-    addToConsole("✅ Lavender Hub v0.5 Loaded Successfully!")
-    addToConsole("🔑 Key System: Verified")
-    addToConsole("🎯 Auto Farm System Ready!")
-end
+local Window = Library:CreateWindow({
+    Title = "Lavender Hub",
+    Footer = "v0.5 (Davi is a sigma)",
+    ToggleKeybind = Enum.KeyCode.RightControl,
+    Center = true,
+    AutoShow = true,
+    ShowCustomCursor = false,
+    Size = UDim2.fromOffset(650, 500),
+    Resizable = false
+})
 
--- Start main loops only after key verification
-if keyVerified then
-    -- Setup death detection
-    setupDeathDetection()
+-- Home Tab
+local HomeTab = Window:AddTab("Home", "house")
+local HomeLeftGroupbox = HomeTab:AddLeftGroupbox("Stats")
+local WrappedLabel = HomeLeftGroupbox:AddLabel({ Text = "Loading...", DoesWrap = true })
 
-    -- Anti-AFK
-    player.Idled:Connect(function()
-        VirtualUser:Button2Down(Vector2.new(0, 0), workspace.CurrentCamera.CFrame)
-        task.wait(1)
-        VirtualUser:Button2Up(Vector2.new(0, 0), workspace.CurrentCamera.CFrame)
-    end)
+-- Farming Tab
+local MainTab = Window:AddTab("Farming", "shovel")
 
-    -- Optimized Main Loops
-    local lastHeartbeatTime = 0
-    RunService.Heartbeat:Connect(function()
-        local currentTime = tick()
-        if currentTime - lastHeartbeatTime < 0.1 then return end
-        lastHeartbeatTime = currentTime
+-- Farming Settings
+local FarmingGroupbox = MainTab:AddLeftGroupbox("Farming")
+local FieldDropdown = FarmingGroupbox:AddDropdown("FieldDropdown", {
+    Values = {"Mushroom Field", "Blueberry Field", "Clover Field", "Spider Field", "Pineapple Field", "Strawberry Field", "Mountain Field", "Pine Field", "Watermelon Field", "Banana Field", "Cog Field"},
+    Default = 1,
+    Multi = false,
+    Text = "Field",
+    Callback = function(Value)
+        local oldField = toggles.field
+        toggles.field = Value
+        saveSettings()
         
-        updateFarmState()
-        updateWalkspeed()
-        clearVisitedTokens()
-        updatePerformanceStats()
-        autoEquipTools()
-        updateToys()
-        updateHoneyStats()
-        sendWebhook()
-        
-        -- NEW: Auto claim hives if none owned
-        if not ownedHive and hiveClaimingEnabled then
-            claimHives()
+        -- If farming and field changed, move to new field
+        if toggles.autoFarm and toggles.isFarming and oldField ~= Value then
+            changeFieldWhileFarming(Value)
         end
-    end)
-
-    -- Load settings on startup
-    loadSettings()
-
-    -- Initialize honey tracking
-    honeyStats.startHoney = getCurrentHoney()
-    honeyStats.currentHoney = honeyStats.startHoney
-    honeyStats.lastHoneyValue = honeyStats.startHoney
-
-    -- Run anti-lag on startup if enabled
-    if toggles.antiLag then
-        addToConsole("Running startup Anti-Lag...")
-        runAntiLag()
     end
+})
 
-    addToConsole("🎯 All systems initialized!")
-    if ownedHive then
-        addToConsole("🏠 Owned Hive: " .. ownedHive)
+local AutoFarmToggle = FarmingGroupbox:AddToggle("AutoFarmToggle", {
+    Text = "Auto Farm",
+    Default = false,
+    Callback = function(Value)
+        toggles.autoFarm = Value
+        saveSettings()
+        if Value then
+            startFarming()
+        else
+            toggles.isFarming = false
+            toggles.isConverting = false
+            toggles.atField = false
+            toggles.atHive = false
+            toggles.isMoving = false
+        end
+    end
+})
+
+local AutoDigToggle = FarmingGroupbox:AddToggle("AutoDigToggle", {
+    Text = "Auto Dig",
+    Default = false,
+    Callback = function(Value)
+        toggles.autoDig = Value
+        saveSettings()
+    end
+})
+
+local AutoEquipToggle = FarmingGroupbox:AddToggle("AutoEquipToggle", {
+    Text = "Auto Equip Tools",
+    Default = false,
+    Callback = function(Value)
+        toggles.autoEquip = Value
+        saveSettings()
+        if Value then
+            addToConsole("Auto Equip Tools enabled")
+            equipAllTools()
+        else
+            addToConsole("Auto Equip Tools disabled")
+        end
+    end
+})
+
+-- NEW: Ticket Converters Toggle
+local TicketConvertersToggle = FarmingGroupbox:AddToggle("TicketConvertersToggle", {
+    Text = "Use Ticket Converters",
+    Default = false,
+    Callback = function(Value)
+        useTicketConverters = Value
+        saveSettings()
+        if Value then
+            addToConsole("🎫 Ticket Converters enabled")
+        else
+            addToConsole("🎫 Ticket Converters disabled")
+        end
+    end
+})
+
+-- IMPROVED AUTO SPRINKLERS - MORE STABLE
+local AutoSprinklersToggle = FarmingGroupbox:AddToggle("AutoSprinklersToggle", {
+    Text = "Auto Sprinklers",
+    Default = false,
+    Callback = function(Value)
+        autoSprinklersEnabled = Value
+        saveSettings()
+        if Value then
+            addToConsole("🚿 Auto Sprinklers enabled")
+            sprinklerPlacementCount = 0
+            sprinklerRetryCount = 0
+            currentFieldVisits = {} -- Reset visits when enabling
+            resetSprinklers()
+        else
+            addToConsole("🚿 Auto Sprinklers disabled")
+        end
+    end
+})
+
+local SprinklerDropdown = FarmingGroupbox:AddDropdown("SprinklerDropdown", {
+    Values = {"Broken Sprinkler", "Basic Sprinkler", "Silver Soakers", "Golden Gushers", "Diamond Drenchers", "Supreme Saturator"},
+    Default = 2,
+    Multi = false,
+    Text = "Sprinkler Type",
+    Callback = function(Value)
+        selectedSprinkler = Value
+        saveSettings()
+        addToConsole("🚿 Sprinkler type set to: " .. Value)
+        resetSprinklers() -- Reset when changing sprinkler type
+    end
+})
+
+-- Movement Settings
+local MovementGroupbox = MainTab:AddRightGroupbox("Movement")
+local MovementMethodDropdown = MovementGroupbox:AddDropdown("MovementMethod", {
+    Values = {"Walk", "Tween"},
+    Default = 1,
+    Multi = false,
+    Text = "Method",
+    Callback = function(Value)
+        toggles.movementMethod = Value
+        saveSettings()
+    end
+})
+
+local TweenSpeedSlider = MovementGroupbox:AddSlider("TweenSpeed", {
+    Text = "Tween Speed",
+    Default = 70,
+    Min = 30,
+    Max = 150,
+    Rounding = 1,
+    Compact = true,
+    Callback = function(Value)
+        toggles.tweenSpeed = Value
+        saveSettings()
+    end
+})
+
+-- Player Settings
+local PlayerGroupbox = MainTab:AddLeftGroupbox("Player")
+local WalkspeedToggle = PlayerGroupbox:AddToggle("WalkspeedToggle", {
+    Text = "Walkspeed",
+    Default = false,
+    Callback = function(Value)
+        toggles.walkspeedEnabled = Value
+        saveSettings()
+        if not Value and player.Character then
+            local humanoid = player.Character:FindFirstChild("Humanoid")
+            if humanoid then humanoid.WalkSpeed = 16 end
+        end
+    end
+})
+
+local WalkspeedSlider = PlayerGroupbox:AddSlider("WalkspeedSlider", {
+    Text = "Speed",
+    Default = 50,
+    Min = 16,
+    Max = 100,
+    Rounding = 1,
+    Compact = true,
+    Callback = function(Value)
+        toggles.walkspeed = Value
+        saveSettings()
+    end
+})
+
+-- Anti-Lag Settings
+local AntiLagGroupbox = MainTab:AddRightGroupbox("Performance")
+local AntiLagToggle = AntiLagGroupbox:AddToggle("AntiLagToggle", {
+    Text = "Anti Lag",
+    Default = false,
+    Tooltip = "Delete fruits and nature objects to reduce lag",
+    Callback = function(Value)
+        toggles.antiLag = Value
+        saveSettings()
+        if Value then
+            addToConsole("Anti-Lag enabled - cleaning objects...")
+            runAntiLag()
+        else
+            addToConsole("Anti-Lag disabled")
+        end
+    end
+})
+
+-- NEW: Toys Tab
+local ToysTab = Window:AddTab("Toys", "gift")
+
+-- Mountain Booster
+local MountainBoosterGroupbox = ToysTab:AddLeftGroupbox("Mountain Booster")
+local MountainBoosterToggle = MountainBoosterGroupbox:AddToggle("MountainBoosterToggle", {
+    Text = "Auto Mountain Booster (30 min)",
+    Default = false,
+    Callback = function(Value)
+        mountainBoosterEnabled = Value
+        saveSettings()
+        if Value then
+            useMountainBooster()
+            addToConsole("🏔️ Auto Mountain Booster enabled")
+        else
+            addToConsole("🏔️ Auto Mountain Booster disabled")
+        end
+    end
+})
+
+-- Red Booster
+local RedBoosterGroupbox = ToysTab:AddLeftGroupbox("Red Booster")
+local RedBoosterToggle = RedBoosterGroupbox:AddToggle("RedBoosterToggle", {
+    Text = "Auto Red Booster (30 min)",
+    Default = false,
+    Callback = function(Value)
+        redBoosterEnabled = Value
+        saveSettings()
+        if Value then
+            useRedBooster()
+            addToConsole("🔴 Auto Red Booster enabled")
+        else
+            addToConsole("🔴 Auto Red Booster disabled")
+        end
+    end
+})
+
+-- Blue Booster
+local BlueBoosterGroupbox = ToysTab:AddRightGroupbox("Blue Booster")
+local BlueBoosterToggle = BlueBoosterGroupbox:AddToggle("BlueBoosterToggle", {
+    Text = "Auto Blue Booster (30 min)",
+    Default = false,
+    Callback = function(Value)
+        blueBoosterEnabled = Value
+        saveSettings()
+        if Value then
+            useBlueBooster()
+            addToConsole("🔵 Auto Blue Booster enabled")
+        else
+            addToConsole("🔵 Auto Blue Booster disabled")
+        end
+    end
+})
+
+-- Wealth Clock
+local WealthClockGroupbox = ToysTab:AddRightGroupbox("Wealth Clock")
+local WealthClockToggle = WealthClockGroupbox:AddToggle("WealthClockToggle", {
+    Text = "Auto Wealth Clock (1 hour)",
+    Default = false,
+    Callback = function(Value)
+        wealthClockEnabled = Value
+        saveSettings()
+        if Value then
+            useWealthClock()
+            addToConsole("⏰ Auto Wealth Clock enabled")
+        else
+            addToConsole("⏰ Auto Wealth Clock disabled")
+        end
+    end
+})
+
+-- Webhook Tab
+local WebhookTab = Window:AddTab("Webhook", "globe")
+local WebhookGroupbox = WebhookTab:AddLeftGroupbox("Webhook Settings")
+
+local WebhookToggle = WebhookGroupbox:AddToggle("WebhookToggle", {
+    Text = "Enable Webhook",
+    Default = false,
+    Callback = function(Value)
+        webhookEnabled = Value
+        saveSettings()
+        if Value then
+            addToConsole("Webhook enabled")
+        else
+            addToConsole("Webhook disabled")
+        end
+    end
+})
+
+local WebhookURLBox = WebhookGroupbox:AddInput("WebhookURL", {
+    Text = "Webhook URL",
+    Default = "",
+    Placeholder = "https://discord.com/api/webhooks/...",
+    Callback = function(Value)
+        webhookURL = Value
+        saveSettings()
+    end
+})
+
+local WebhookIntervalSlider = WebhookGroupbox:AddSlider("WebhookInterval", {
+    Text = "Send Interval (minutes)",
+    Default = 5,
+    Min = 1,
+    Max = 60,
+    Rounding = 1,
+    Compact = true,
+    Callback = function(Value)
+        webhookInterval = Value
+        saveSettings()
+    end
+})
+
+WebhookGroupbox:AddButton("Send Test Webhook", function()
+    if webhookEnabled and webhookURL ~= "" then
+        addToConsole("Sending test webhook...")
+        sendWebhook()
     else
-        addToConsole("🔄 Auto-claiming hives...")
+        addToConsole("❌ Enable webhook and set URL first")
     end
+end)
+
+-- Console Tab
+local ConsoleTab = Window:AddTab("Console", "terminal")
+local ConsoleGroupbox = ConsoleTab:AddLeftGroupbox("Output")
+consoleLabel = ConsoleGroupbox:AddLabel({ Text = "Lavender Hub v0.5 Ready", DoesWrap = true })
+
+-- Debug Tab
+local DebugTab = Window:AddTab("Debug", "bug")
+local DebugGroupbox = DebugTab:AddLeftGroupbox("Performance Stats")
+debugLabels.fps = DebugGroupbox:AddLabel("FPS: 0")
+debugLabels.memory = DebugGroupbox:AddLabel("Memory: 0 MB")
+debugLabels.objects = DebugGroupbox:AddLabel("Objects Deleted: 0")
+
+local HoneyStatsGroupbox = DebugTab:AddRightGroupbox("Honey Statistics")
+local HoneyMadeLabel = HoneyStatsGroupbox:AddLabel("Honey Made: 0")
+local HourlyRateLabel = HoneyStatsGroupbox:AddLabel("Hourly Rate: 0")
+local SessionHoneyLabel = HoneyStatsGroupbox:AddLabel("Session Honey: 0")
+local DailyHoneyLabel = HoneyStatsGroupbox:AddLabel("Daily Honey: 0")
+
+local DebugActionsGroupbox = DebugTab:AddRightGroupbox("Actions")
+DebugActionsGroupbox:AddButton("Run Anti-Lag", function()
+    if toggles.antiLag then
+        runAntiLag()
+    else
+        addToConsole("Enable Anti-Lag first")
+    end
+end)
+
+DebugActionsGroupbox:AddButton("Clear Console", function()
+    consoleLogs = {}
+    if consoleLabel then
+        consoleLabel:SetText("Console cleared")
+    end
+end)
+
+DebugActionsGroupbox:AddButton("Equip Tools", function()
+    equipAllTools()
+    addToConsole("Manually equipped all tools")
+end)
+
+-- Status Groupbox
+local StatusGroupbox = MainTab:AddRightGroupbox("Status")
+local StatusLabel = StatusGroupbox:AddLabel("Status: Idle")
+local PollenLabel = StatusGroupbox:AddLabel("Pollen: 0")
+local HourlyHoneyLabel = StatusGroupbox:AddLabel("Hourly Honey: 0")
+local SprinklerStatusLabel = StatusGroupbox:AddLabel("Sprinklers: 0 placed")
+
+-- UI Settings Tab
+local UISettingsTab = Window:AddTab("UI Settings", "settings")
+ThemeManager:SetLibrary(Library)
+SaveManager:SetLibrary(Library)
+SaveManager:SetIgnoreIndexes({ "MenuKeybind" })
+SaveManager:BuildConfigSection(UISettingsTab)
+ThemeManager:ApplyToTab(UISettingsTab)
+SaveManager:LoadAutoloadConfig()
+
+-- Anti-AFK
+player.Idled:Connect(function()
+    VirtualUser:Button2Down(Vector2.new(0, 0), workspace.CurrentCamera.CFrame)
+    task.wait(1)
+    VirtualUser:Button2Up(Vector2.new(0, 0), workspace.CurrentCamera.CFrame)
+end)
+
+-- Setup death detection on startup
+setupDeathDetection()
+
+-- Optimized Main Loops
+local lastHeartbeatTime = 0
+RunService.Heartbeat:Connect(function()
+    local currentTime = tick()
+    if currentTime - lastHeartbeatTime < 0.1 then return end
+    lastHeartbeatTime = currentTime
+    
+    updateFarmState()
+    updateWalkspeed()
+    clearVisitedTokens()
+    updatePerformanceStats()
+    autoEquipTools()
+    updateToys()
+    updateHoneyStats()
+    sendWebhook()
+    
+    -- Update status display - USING CORRECT FORMATTING
+    local statusText = "Idle"
+    local currentPollen = getCurrentPollen()
+    local currentHoney = getCurrentHoney()
+    
+    if toggles.autoFarm then
+        if toggles.isFarming and toggles.atField then
+            statusText = "Farming"
+        elseif toggles.isConverting and toggles.atHive then
+            statusText = "Converting"
+        elseif toggles.isFarming then
+            statusText = "Moving to Field"
+        elseif toggles.isConverting then
+            statusText = "Moving to Hive"
+        end
+    end
+    
+    StatusLabel:SetText("Status: " .. statusText)
+    PollenLabel:SetText("Pollen: " .. formatNumberCorrect(currentPollen))
+    HourlyHoneyLabel:SetText("Hourly Honey: " .. formatNumberCorrect(honeyStats.hourlyRate))
+    SprinklerStatusLabel:SetText("Sprinklers: " .. placedSprinklersCount .. "/" .. expectedSprinklerCount .. " placed")
+    
+    -- Update debug labels
+    HoneyMadeLabel:SetText("Honey Made: " .. formatNumberCorrect(honeyStats.honeyMade))
+    HourlyRateLabel:SetText("Hourly Rate: " .. formatNumberCorrect(honeyStats.hourlyRate))
+    SessionHoneyLabel:SetText("Session Honey: " .. formatNumberCorrect(honeyStats.sessionHoney))
+    DailyHoneyLabel:SetText("Daily Honey: " .. formatNumberCorrect(honeyStats.dailyHoney))
+end)
+
+-- Stats Update Loop
+spawn(function()
+    while task.wait(1) do
+        local currentPollen = getCurrentPollen()
+        local currentHoney = getCurrentHoney()
+        
+        WrappedLabel:SetText(string.format(
+            "Honey: %s\nPollen: %s\nField: %s\nHive: %s\nMove: %s\nDig: %s\nEquip: %s\nAnti-Lag: %s\nHourly Honey: %s\nAuto Sprinklers: %s\nSprinkler Type: %s\nTicket Converters: %s\nSession Honey: %s\nDaily Honey: %s",
+            formatNumberCorrect(currentHoney),
+            formatNumberCorrect(currentPollen),
+            toggles.field,
+            displayHiveName,
+            toggles.movementMethod,
+            toggles.autoDig and "ON" or "OFF",
+            toggles.autoEquip and "ON" or "OFF",
+            toggles.antiLag and "ON" or "OFF",
+            formatNumberCorrect(honeyStats.hourlyRate),
+            autoSprinklersEnabled and "ON" or "OFF",
+            selectedSprinkler,
+            useTicketConverters and "ON" or "OFF",
+            formatNumberCorrect(honeyStats.sessionHoney),
+            formatNumberCorrect(honeyStats.dailyHoney)
+        ))
+    end
+end)
+
+-- Load settings on startup
+loadSettings()
+
+-- Apply loaded settings to GUI
+FieldDropdown:Set(toggles.field)
+AutoFarmToggle:Set(toggles.autoFarm)
+AutoDigToggle:Set(toggles.autoDig)
+AutoEquipToggle:Set(toggles.autoEquip)
+AntiLagToggle:Set(toggles.antiLag)
+MovementMethodDropdown:Set(toggles.movementMethod)
+TweenSpeedSlider:Set(toggles.tweenSpeed)
+WalkspeedToggle:Set(toggles.walkspeedEnabled)
+WalkspeedSlider:Set(toggles.walkspeed)
+AutoSprinklersToggle:Set(autoSprinklersEnabled)
+SprinklerDropdown:Set(selectedSprinkler)
+WebhookToggle:Set(webhookEnabled)
+WebhookURLBox:Set(webhookURL)
+WebhookIntervalSlider:Set(webhookInterval)
+TicketConvertersToggle:Set(useTicketConverters)
+MountainBoosterToggle:Set(mountainBoosterEnabled)
+RedBoosterToggle:Set(redBoosterEnabled)
+BlueBoosterToggle:Set(blueBoosterEnabled)
+WealthClockToggle:Set(wealthClockEnabled)
+
+-- Update owned hive after claiming
+ownedHive = getOwnedHive()
+displayHiveName = ownedHive and "Hive" or "None"
+
+-- Initialize honey tracking - STARTS AT 0
+honeyStats.startHoney = getCurrentHoney()
+honeyStats.currentHoney = honeyStats.startHoney
+honeyStats.lastHoneyValue = honeyStats.startHoney
+honeyStats.trackingStarted = false
+honeyStats.firstAutoFarmEnabled = false
+honeyStats.honeyMade = 0
+honeyStats.hourlyRate = 0
+honeyStats.sessionHoney = 0
+honeyStats.dailyHoney = 0
+
+-- Run anti-lag on startup if enabled
+if toggles.antiLag then
+    addToConsole("Running startup Anti-Lag...")
+    runAntiLag()
 end
+
+addToConsole("✅ Lavender Hub v0.5 Ready!")
+addToConsole("🎯 Auto Farm System Ready!")
+addToConsole("🚿 IMPROVED Auto Sprinklers System Ready!")
+addToConsole("💀 Death Respawn System Ready!")
+addToConsole("🌐 Webhook System Ready!")
+addToConsole("🎫 Ticket Converters System Ready!")
+addToConsole("🎁 Toys/Boosters System Ready!")
+if ownedHive then
+    addToConsole("🏠 Owned Hive: " .. ownedHive)
+else
+    addToConsole("💔 No hive owned")
+end
+
+end -- End of loadMainScript function
+
+-- Verify Button Click
+verifyButton.MouseButton1Click:Connect(function()
+    animateButton(verifyButton)
+    
+    local enteredKey = keyBox.Text
+    if enteredKey:lower() == correctKey then  -- Case insensitive check
+        loadMainScript()
+    else
+        statusLabel.Text = "❌ Invalid key! Please try again."
+        statusLabel.TextColor3 = Color3.fromRGB(231, 76, 60)
+        
+        -- Shake animation for wrong key
+        local originalPos = keyBox.Position
+        for i = 1, 3 do
+            keyBox.Position = originalPos + UDim2.new(0, 5, 0, 0)
+            task.wait(0.05)
+            keyBox.Position = originalPos - UDim2.new(0, 5, 0, 0)
+            task.wait(0.05)
+        end
+        keyBox.Position = originalPos
+    end
+end)
+
+-- Enter key to verify
+keyBox.FocusLost:Connect(function(enterPressed)
+    if enterPressed then
+        verifyButton.MouseButton1Click:Connect()
+    end
+end)
+
+-- Make draggable
+local dragging = false
+local dragInput, dragStart, startPos
+
+titleBar.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        dragging = true
+        dragStart = input.Position
+        startPos = frame.Position
+        
+        input.Changed:Connect(function()
+            if input.UserInputState == Enum.UserInputState.End then
+                dragging = false
+            end
+        end)
+    end
+end)
+
+titleBar.InputChanged:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseMovement then
+        dragInput = input
+    end
+end)
+
+game:GetService("UserInputService").InputChanged:Connect(function(input)
+    if input == dragInput and dragging then
+        local delta = input.Position - dragStart
+        frame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+    end
+end)
+
+print("🔒 Lavender Hub Key System Loaded!")
+print("📱 Discord: " .. discordLink)
+print("🔑 Key: release")
