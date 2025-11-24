@@ -6,7 +6,7 @@ local player = Players.LocalPlayer
 
 -- Key Configuration
 local correctKey = "release"
-local discordLink = "https://discord.gg/gn6QbUbt5"
+local discordLink = "https://discord.gg/zN8mrrczW"
 
 -- Clipboard function
 local function copyToClipboard(text)
