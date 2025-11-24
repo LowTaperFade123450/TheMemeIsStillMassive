@@ -688,112 +688,15 @@ local function checkHiveOwnership()
         toggles.lastHiveCheckTime = tick()
     end
 end
--- 🎄 IMPROVED PATHFINDING SYSTEM
-local function moveToPositionWalk(targetPos)
-    local character = GetCharacter()
-    local humanoid = character:FindFirstChild("Humanoid")
-    local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
-    if not humanoid or not humanoidRootPart then return false end
-    
-    -- Create path using PathfindingService with better settings
-    local path = PathfindingService:CreatePath({
-        AgentRadius = 2,
-        AgentHeight = 5,
-        AgentCanJump = true,
-        WaypointSpacing = 4,
-        Costs = {
-            Water = 20  -- Higher cost for obstacles
-        }
-    })
-    
-    local startPos = humanoidRootPart.Position
-    local success, pathStatus = pcall(function()
-        path:ComputeAsync(startPos, targetPos)
-        return path.Status
-    end)
-    
-    if success and pathStatus == Enum.PathStatus.Success then
-        local waypoints = path:GetWaypoints()
-        
-        for i, waypoint in ipairs(waypoints) do
-            if i > 1 then -- Skip first waypoint (current position)
-                humanoid:MoveTo(waypoint.Position)
-                
-                local startTime = tick()
-                local reached = false
-                
-                -- Wait for movement to complete or timeout
-                while not reached and tick() - startTime < 10 do
-                    if (humanoidRootPart.Position - waypoint.Position).Magnitude <= 6 then
-                        reached = true
-                        break
-                    end
-                    
-                    -- If stuck, try jumping
-                    if tick() - startTime > 3 and (humanoidRootPart.Position - waypoint.Position).Magnitude > 8 then
-                        humanoid.Jump = true
-                    end
-                    
-                    task.wait(0.1)
-                end
-                
-                -- If this is an action waypoint (jump), make the character jump
-                if waypoint.Action == Enum.PathWaypointAction.Jump then
-                    humanoid.Jump = true
-                    task.wait(0.5)
-                end
-                
-                if not reached then
-                    addToConsole("❄️ Pathfinding timeout at waypoint " .. i)
-                    return false
-                end
-            end
-        end
-        
-        -- Final move to exact target position
-        humanoid:MoveTo(targetPos)
-        local finalStartTime = tick()
-        while (humanoidRootPart.Position - targetPos).Magnitude > 8 do
-            if tick() - finalStartTime > 15 then
-                addToConsole("❄️ Final position timeout")
-                return false
-            end
-            
-            -- Try jumping if stuck near target
-            if tick() - finalStartTime > 5 and (humanoidRootPart.Position - targetPos).Magnitude < 15 then
-                humanoid.Jump = true
-            end
-            task.wait(0.1)
-        end
-        
-        addToConsole("✅ Pathfinding completed successfully! 🎄")
-        return true
-    else
-        -- Fallback to simple movement if pathfinding fails
-        addToConsole("❄️ Pathfinding failed, using fallback movement")
-        humanoid:MoveTo(targetPos)
-        local startTime = tick()
-        while (humanoidRootPart.Position - targetPos).Magnitude > 10 do
-            if tick() - startTime > 20 then
-                addToConsole("❄️ Fallback movement timeout")
-                return false
-            end
-            -- Try jumping if stuck
-            if tick() - startTime > 5 and (humanoidRootPart.Position - targetPos).Magnitude < 20 then
-                humanoid.Jump = true
-            end
-            task.wait(0.1)
-        end
-        return true
-    end
-end
-
 -- 🎄 FIXED SMOOTH TWEEN MOVEMENT SYSTEM
 local function smoothTweenToPosition(targetPos)
     local character = GetCharacter()
     local humanoid = character:FindFirstChild("Humanoid")
     local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
-    if not humanoid or not humanoidRootPart then return false end
+    if not humanoid or not humanoidRootPart then 
+        addToConsole("❄️ Tween: Missing character components")
+        return false 
+    end
 
     local SPEED = toggles.tweenSpeed
     local TARGET_HEIGHT = 3
@@ -810,9 +713,7 @@ local function smoothTweenToPosition(targetPos)
     local directDistance = (startPos - adjustedTargetPos).Magnitude
     local duration = directDistance / SPEED
     
-    humanoid:ChangeState(Enum.HumanoidStateType.Swimming)
-    humanoid.AutoRotate = false
-    
+    -- Clear previous movement trackers
     if humanoidRootPart:FindFirstChild("MovementActive") then
         humanoidRootPart.MovementActive:Destroy()
     end
@@ -824,9 +725,16 @@ local function smoothTweenToPosition(targetPos)
     local movementCompleted = false
     local startTime = tick()
     
+    -- Store original states
+    local originalAutoRotate = humanoid.AutoRotate
+    local originalState = humanoid:GetState()
+    
+    humanoid:ChangeState(Enum.HumanoidStateType.Swimming)
+    humanoid.AutoRotate = false
+    
     local connection
     connection = RunService.Heartbeat:Connect(function()
-        if not movementTracker.Parent then
+        if not movementTracker.Parent or not humanoidRootPart or not humanoidRootPart.Parent then
             connection:Disconnect()
             return
         end
@@ -834,22 +742,28 @@ local function smoothTweenToPosition(targetPos)
         local progress = math.min((tick() - startTime) / duration, 1)
         local currentPos = startPos + (adjustedTargetPos - startPos) * progress
         
+        -- Smooth vertical movement
         currentPos = Vector3.new(
             currentPos.X,
             startPos.Y + (adjustedTargetPos.Y - startPos.Y) * progress,
             currentPos.Z
         )
         
+        -- Apply movement
         humanoidRootPart.CFrame = CFrame.new(currentPos, currentPos + originalLookVector)
         
+        -- Anti-fling at the end
         humanoidRootPart.Velocity = progress > 0.9 and ANTI_FLING_FORCE or Vector3.new(0, math.min(humanoidRootPart.Velocity.Y, 0), 0)
         
         if progress >= 1 then
             connection:Disconnect()
             movementTracker:Destroy()
-            humanoid.AutoRotate = true
-            humanoid:ChangeState(Enum.HumanoidStateType.Running)
             
+            -- Restore original states
+            humanoid.AutoRotate = originalAutoRotate
+            humanoid:ChangeState(originalState)
+            
+            -- Final positioning
             local currentOrientation = humanoidRootPart.CFrame.Rotation
             humanoidRootPart.CFrame = CFrame.new(
                 targetPos.X,
@@ -857,6 +771,7 @@ local function smoothTweenToPosition(targetPos)
                 targetPos.Z
             ) * currentOrientation
             
+            -- Stop all movement
             humanoidRootPart.Velocity = Vector3.zero
             task.wait(0.1)
             humanoidRootPart.Velocity = Vector3.zero
@@ -864,6 +779,7 @@ local function smoothTweenToPosition(targetPos)
         end
     end)
     
+    -- Cleanup on character change
     character.AncestryChanged:Connect(function()
         if not character.Parent then
             connection:Disconnect()
@@ -879,7 +795,164 @@ local function smoothTweenToPosition(targetPos)
         task.wait(0.1)
     end
     
+    if movementCompleted then
+        addToConsole("✅ Tween movement completed! 🎄")
+    else
+        addToConsole("❄️ Tween movement timeout")
+    end
+    
     return movementCompleted
+end
+
+-- 🎄 NEW IMPROVED PATHFINDING SYSTEM (Using your provided script)
+local pathfindingActive = false
+local pathConnection, blockedConnection = nil, nil
+
+local function cleanupPathfindingConnections()
+    if pathConnection then pathConnection:Disconnect() end
+    if blockedConnection then blockedConnection:Disconnect() end
+    pathConnection, blockedConnection = nil, nil
+end
+
+local function createPath(target)
+    local character = GetCharacter()
+    local rootpart = character and character:FindFirstChild("HumanoidRootPart")
+    if not rootpart then return nil end
+    
+    local path = PathfindingService:CreatePath({
+        AgentRadius = 2.8,
+        AgentHeight = 5.8,
+        AgentCanJump = true,
+        AgentCanClimb = true,
+        WaypointSpacing = 3.0,
+        Costs = {
+            Water = 25,
+        }
+    })
+
+    local success = pcall(function()
+        path:ComputeAsync(rootpart.Position, target)
+    end)
+
+    return success and path.Status == Enum.PathStatus.Success and path or nil
+end
+
+local function followPath(path)
+    local character = GetCharacter()
+    local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+    local rootpart = character and character:FindFirstChild("HumanoidRootPart")
+    
+    if not humanoid or not rootpart then return false end
+
+    local waypoints = path:GetWaypoints()
+
+    blockedConnection = path.Blocked:Connect(function()
+        cleanupPathfindingConnections()
+    end)
+
+    for index, waypoint in ipairs(waypoints) do
+        if not pathfindingActive or not rootpart or not rootpart.Parent then
+            return false
+        end
+
+        if waypoint.Action == Enum.PathWaypointAction.Jump then
+            humanoid.Jump = true
+        end
+
+        humanoid:MoveTo(waypoint.Position)
+
+        local startTime = tick()
+        local moveFinishedConnection = nil
+        local reached = false
+
+        moveFinishedConnection = humanoid.MoveToFinished:Connect(function(reach)
+            reached = reach
+            if moveFinishedConnection then moveFinishedConnection:Disconnect() end
+        end)
+
+        repeat
+            RunService.Heartbeat:Wait()
+            local distToWp = (rootpart.Position - waypoint.Position).Magnitude
+            local vel = rootpart.Velocity.Magnitude
+            if distToWp > 4 and vel < 5 then
+                humanoid.Jump = true
+                task.wait(0.1)
+            end
+        until reached or tick() - startTime > (index == 1 and 2 or 4)
+
+        if moveFinishedConnection then moveFinishedConnection:Disconnect() end
+
+        if not reached then return false end
+    end
+
+    return true
+end
+
+function startPathfinding(target)
+    local character = GetCharacter()
+    local rootpart = character and character:FindFirstChild("HumanoidRootPart")
+    if not rootpart then return end
+
+    pathfindingActive = true
+    cleanupPathfindingConnections()
+
+    task.spawn(function()
+        while pathfindingActive and rootpart and rootpart.Parent do
+            local path = createPath(target)
+            if path then
+                local reachedEnd = followPath(path)
+                if reachedEnd then break end
+            end
+            task.wait(0.3)
+        end
+        pathfindingActive = false
+        cleanupPathfindingConnections()
+    end)
+end
+
+function stopPathfinding()
+    pathfindingActive = false
+    cleanupPathfindingConnections()
+end
+
+-- 🎄 IMPROVED WALK MOVEMENT USING NEW PATHFINDING
+local function moveToPositionWalk(targetPos)
+    addToConsole("🎄 Starting pathfinding movement...")
+    
+    local character = GetCharacter()
+    local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+    if not humanoid then 
+        addToConsole("❄️ Walk: Missing humanoid")
+        return false 
+    end
+    
+    -- Stop any existing pathfinding
+    stopPathfinding()
+    
+    -- Start new pathfinding
+    startPathfinding(targetPos)
+    
+    -- Wait for completion with timeout
+    local startTime = tick()
+    while pathfindingActive and tick() - startTime < 30 do
+        local dist = (character.HumanoidRootPart.Position - targetPos).Magnitude
+        if dist < 10 then
+            stopPathfinding()
+            addToConsole("✅ Pathfinding completed successfully! 🎄")
+            return true
+        end
+        task.wait(0.5)
+    end
+    
+    stopPathfinding()
+    
+    if (character.HumanoidRootPart.Position - targetPos).Magnitude < 15 then
+        addToConsole("✅ Reached target area! 🎄")
+        return true
+    else
+        addToConsole("❄️ Pathfinding timeout")
+        return false
+    end
 end
 
 -- 🎄 Main Movement Function
@@ -888,8 +961,10 @@ local function moveToPosition(targetPos)
     
     local success = false
     if toggles.movementMethod == "Tween" then
+        addToConsole("🎄 Using Tween movement...")
         success = smoothTweenToPosition(targetPos)
     else
+        addToConsole("🎄 Using Walk movement...")
         success = moveToPositionWalk(targetPos)
     end
     
@@ -932,7 +1007,6 @@ local function performContinuousMovement()
         end
     end
 end
-
 -- 🚿 IMPROVED AUTO SPRINKLERS SYSTEM - MORE STABLE AND RELIABLE
 local function getFieldFlowerPart(fieldName)
     local fieldsFolder = workspace:WaitForChild("Fields")
@@ -1159,6 +1233,7 @@ local function changeFieldWhileFarming(newField)
         addToConsole("❌ Failed to reach new field")
     end
 end
+
 -- 🎅 Death respawn system
 local function onCharacterDeath()
     if toggles.autoFarm and toggles.isFarming then
@@ -1550,10 +1625,9 @@ local function sendWebhook()
     
     local requestFunc = (syn and syn.request) or (http and http.request) or http_request or request
     if not requestFunc then
-        addToConsole("❌ No HTTP request function available 🎄")
+            addToConsole("❌ No HTTP request function available 🎄")
         return
     end
-    
     local currentHoney = getCurrentHoney()
     local currentPollen = getCurrentPollen()
     local scriptUptime = tick() - scriptStartTime
