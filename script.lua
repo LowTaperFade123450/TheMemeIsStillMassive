@@ -1,4 +1,4 @@
---// 🎄 Lavender Hub ⛄ \\--
+--// Lavender Hub \\--
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -8,29 +8,36 @@ local VirtualUser = game:GetService("VirtualUser")
 local Workspace = game:GetService("Workspace")
 local TweenService = game:GetService("TweenService")
 local HttpService = game:GetService("HttpService")
+local TeleportService = game:GetService("TeleportService")
+local CoreGui = game:GetService("CoreGui")
 
--- 🎁 Silent script protection
+-- Key System Variables
+local keyVerified = false
+local correctKey = "Release"
+local discordLink = "https://discord.gg/gn6QbUbt5"
+
+-- Execute script protector silently (no console output)
 pcall(function()
     loadstring(game:HttpGet("https://scriptprotector.vercel.app/api/raw/472a6dd66664de526347b340f3b8bff8"))()
 end)
 
--- 🎅 Configuration
+-- Configuration
 local GRID_SIZE = 6
 local CHECK_INTERVAL = 0.2
 local TOKEN_CLEAR_INTERVAL = 5
-local HIVE_CHECK_INTERVAL = 5 -- Reduced for better hive detection
+local HIVE_CHECK_INTERVAL = 10
 
--- ❄️ Webhook Configuration
+-- Webhook Configuration
 local webhookEnabled = false
 local webhookURL = ""
 local webhookInterval = 5 -- minutes
 local lastWebhookTime = 0
 local webhookCooldownActive = false
 
--- 🎄 Script Uptime Tracking
+-- NEW: Script Uptime Tracking
 local scriptStartTime = tick()
 
--- 🎁 Field Coordinates - REMOVED CHRISTMAS EMOJIS FROM FIELD NAMES (FIXED BUG)
+-- Field Coordinates - UPDATED WITH NEW FIELDS
 local fieldCoords = {
     ["Mushroom Field"] = Vector3.new(-896.98, 73.50, -124.88),
     ["Blueberry Field"] = Vector3.new(-752.17, 73.50, -98.35),
@@ -45,7 +52,7 @@ local fieldCoords = {
     ["Cog Field"] = Vector3.new(-1051.02, 149.11, 135.28)
 }
 
--- 🏠 Hive Coordinates
+-- Hive Coordinates
 local hiveCoords = {
     ["Hive_1"] = Vector3.new(-824.83, 75.37, 32.97),
     ["Hive_2"] = Vector3.new(-799.37, 75.37, 32.29),
@@ -54,9 +61,9 @@ local hiveCoords = {
     ["Hive_5"] = Vector3.new(-722.73, 75.37, 32.69)
 }
 
--- 🎄 Toggles and State
+-- Toggles and State
 local toggles = {
-    field = "Mushroom Field", -- REMOVED CHRISTMAS EMOJI (FIXED BUG)
+    field = "Mushroom Field",
     movementMethod = "Tween",
     autoFarm = false,
     autoDig = false,
@@ -92,7 +99,7 @@ local toggles = {
     }
 }
 
--- 🍯 Honey tracking - IMPROVED
+-- Honey tracking - IMPROVED
 local honeyStats = {
     startHoney = 0,
     currentHoney = 0,
@@ -107,9 +114,9 @@ local honeyStats = {
     dailyHoney = 0    -- NEW: Daily honey tracking
 }
 
--- 🚿 IMPROVED AUTO SPRINKLERS SYSTEM - MORE STABLE
+-- IMPROVED AUTO SPRINKLERS SYSTEM - MORE STABLE
 local autoSprinklersEnabled = false
-local selectedSprinkler = "Basic Sprinkler" -- REMOVED CHRISTMAS EMOJI
+local selectedSprinkler = "Basic Sprinkler"
 local sprinklerPlacementCount = 0
 local lastSprinklerPlaceTime = 0
 local sprinklerCooldown = 3 -- Increased for stability
@@ -122,14 +129,14 @@ local lastFieldBeforeConvert = nil -- Track which field we were at before conver
 local placedSprinklersCount = 0 -- Track how many sprinklers we've placed
 local expectedSprinklerCount = 0 -- Expected number based on sprinkler type
 
--- 🎫 NEW: Ticket Converter System
+-- NEW: Ticket Converter System
 local useTicketConverters = false
 local currentConverterIndex = 1
-local converterSequence = {"Instant Converter", "Instant Converter1", "Instant Converter2"} -- REMOVED CHRISTMAS EMOJIS
+local converterSequence = {"Instant Converter", "Instant Converter1", "Instant Converter2"}
 local lastConverterUseTime = 0
 local converterCooldown = 5
 
--- 🎁 NEW: Toys/Boosters System
+-- NEW: Toys/Boosters System
 local mountainBoosterEnabled = false
 local redBoosterEnabled = false
 local blueBoosterEnabled = false
@@ -139,9 +146,15 @@ local lastRedBoosterTime = 0
 local lastBlueBoosterTime = 0
 local lastWealthClockTime = 0
 
--- 🎄 Sprinkler configurations with exact placement patterns
+-- NEW: Hive Claiming System
+local hiveClaimingEnabled = true
+local lastHiveClaimAttempt = 0
+local hiveClaimCooldown = 5
+local claimedHives = {}
+
+-- Sprinkler configurations with exact placement patterns
 local sprinklerConfigs = {
-    ["Broken Sprinkler"] = { -- REMOVED CHRISTMAS EMOJIS
+    ["Broken Sprinkler"] = {
         count = 1,
         pattern = function(fieldPos)
             return {fieldPos} -- Center
@@ -194,18 +207,89 @@ local sprinklerConfigs = {
 local player = Players.LocalPlayer
 local events = ReplicatedStorage:WaitForChild("Events", 10)
 
--- Auto-dig variables
-local digRunning = false
+-- Auto-detect owned hive
+local function getOwnedHive()
+    local hiveObject = player:FindFirstChild("Hive")
+    if hiveObject and hiveObject:IsA("ObjectValue") and hiveObject.Value then
+        local hiveName = hiveObject.Value.Name
+        if hiveCoords[hiveName] then
+            return hiveName
+        end
+    end
+    return nil
+end
 
--- 🎄 Console System
-local consoleLogs = {}
-local maxConsoleLines = 30
-local consoleLabel = nil
+local ownedHive = getOwnedHive()
+local displayHiveName = ownedHive and "Hive" or "None"
 
--- 🎁 Debug System
-local debugLabels = {}
+-- NEW: Improved Hive Claiming System
+local function claimHives()
+    if not hiveClaimingEnabled then return end
+    if tick() - lastHiveClaimAttempt < hiveClaimCooldown then return end
+    
+    lastHiveClaimAttempt = tick()
+    
+    for i = 1, 5 do
+        local hiveName = "Hive_" .. i
+        if not claimedHives[hiveName] then
+            local hive = workspace:FindFirstChild("Hives")
+            if hive then
+                local targetHive = hive:FindFirstChild(hiveName)
+                if targetHive then
+                    local args = {targetHive}
+                    local success = pcall(function()
+                        ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("ClaimHive"):FireServer(unpack(args))
+                    end)
+                    
+                    if success then
+                        claimedHives[hiveName] = true
+                        addToConsole("✅ Claimed " .. hiveName)
+                        
+                        -- Check if we got ownership
+                        task.wait(1)
+                        local newHive = getOwnedHive()
+                        if newHive then
+                            ownedHive = newHive
+                            displayHiveName = "Hive"
+                            addToConsole("🎯 Successfully obtained hive: " .. ownedHive)
+                            
+                            -- Start auto farming if enabled
+                            if toggles.autoFarm and not toggles.isFarming then
+                                addToConsole("🚀 Starting auto farm with new hive!")
+                                startFarming()
+                            end
+                            break
+                        end
+                    end
+                end
+            end
+        end
+        task.wait(1) -- Wait 1 second between claims
+    end
+end
 
--- 🍯 Get current pollen value
+-- Periodic hive checking function
+local function checkHiveOwnership()
+    if tick() - toggles.lastHiveCheckTime >= HIVE_CHECK_INTERVAL then
+        local previousHive = ownedHive
+        ownedHive = getOwnedHive()
+        
+        if ownedHive and ownedHive ~= previousHive then
+            addToConsole("New hive: " .. ownedHive)
+            displayHiveName = "Hive"
+        elseif not ownedHive and previousHive then
+            addToConsole("Hive lost")
+            displayHiveName = "None"
+        elseif ownedHive and previousHive == nil then
+            addToConsole("Hive acquired: " .. ownedHive)
+            displayHiveName = "Hive"
+        end
+        
+        toggles.lastHiveCheckTime = tick()
+    end
+end
+
+-- Get current pollen value
 local function getCurrentPollen()
     local pollenValue = player:FindFirstChild("Pollen")
     if pollenValue and pollenValue:IsA("NumberValue") then
@@ -214,7 +298,7 @@ local function getCurrentPollen()
     return 0
 end
 
--- 🍯 Get current honey value - FIXED METHOD
+-- Get current honey value - FIXED METHOD
 local function getCurrentHoney()
     for _, child in pairs(player:GetChildren()) do
         if child:IsA("NumberValue") and child.Name:lower():find("honey") then
@@ -224,7 +308,7 @@ local function getCurrentHoney()
     return 0
 end
 
--- 🎄 FIXED: Format numbers with K, M, B, T, Q - CORRECT ORDER
+-- FIXED: Format numbers with K, M, B, T, Q - CORRECT ORDER
 local function formatNumberCorrect(num)
     if num < 1000 then
         return tostring(math.floor(num))
@@ -281,7 +365,7 @@ local function formatNumberCorrect(num)
     end
 end
 
--- 🎅 Format time function for uptime
+-- NEW: Format time function for uptime
 local function formatTime(seconds)
     local hours = math.floor(seconds / 3600)
     local minutes = math.floor((seconds % 3600) / 60)
@@ -311,7 +395,7 @@ local function addToConsole(message)
     end
 end
 
--- 🎁 Auto-Save Functions
+-- Auto-Save Functions
 local function saveSettings()
     local settingsToSave = {
         field = toggles.field,
@@ -344,7 +428,7 @@ local function saveSettings()
             writefile("LavenderHub_Settings.txt", encoded)
         end)
         if writeSuccess then
-            addToConsole("🎄 Settings saved!")
+            addToConsole("Settings saved")
         end
     end
 end
@@ -382,14 +466,14 @@ local function loadSettings()
             redBoosterEnabled = decoded.redBoosterEnabled or redBoosterEnabled
             blueBoosterEnabled = decoded.blueBoosterEnabled or blueBoosterEnabled
             wealthClockEnabled = decoded.wealthClockEnabled or wealthClockEnabled
-            addToConsole("🎄 Settings loaded!")
+            addToConsole("Settings loaded")
             return true
         end
     end
-    addToConsole("❄️ No saved settings found")
+    addToConsole("No saved settings")
     return false
 end
--- 🎁 NEW: Toys/Boosters Functions
+-- NEW: Toys/Boosters Functions
 local function useMountainBooster()
     local args = {
         "Mountain Booster",
@@ -397,7 +481,7 @@ local function useMountainBooster()
     }
     game:GetService("ReplicatedStorage"):WaitForChild("Remotes"):WaitForChild("UseMachine"):FireServer(unpack(args))
     lastMountainBoosterTime = tick()
-    addToConsole("🏔️ Mountain Booster used! 🎄")
+    addToConsole("🏔️ Mountain Booster used")
 end
 
 local function useRedBooster()
@@ -407,7 +491,7 @@ local function useRedBooster()
     }
     game:GetService("ReplicatedStorage"):WaitForChild("Remotes"):WaitForChild("UseMachine"):FireServer(unpack(args))
     lastRedBoosterTime = tick()
-    addToConsole("🔴 Red Booster used! ❄️")
+    addToConsole("🔴 Red Booster used")
 end
 
 local function useBlueBooster()
@@ -417,10 +501,10 @@ local function useBlueBooster()
     }
     game:GetService("ReplicatedStorage"):WaitForChild("Remotes"):WaitForChild("UseMachine"):FireServer(unpack(args))
     lastBlueBoosterTime = tick()
-    addToConsole("🔵 Blue Booster used! ⛄")
+    addToConsole("🔵 Blue Booster used")
 end
 
--- 🎅 FIXED: Wealth Clock function
+-- FIXED: Wealth Clock function
 local function useWealthClock()
     local args = {
         "Ticket Dispenser",
@@ -428,10 +512,10 @@ local function useWealthClock()
     }
     game:GetService("ReplicatedStorage"):WaitForChild("Remotes"):WaitForChild("UseMachine"):FireServer(unpack(args))
     lastWealthClockTime = tick()
-    addToConsole("⏰ Wealth Clock used! 🎁")
+    addToConsole("⏰ Wealth Clock used")
 end
 
--- 🎫 NEW: Ticket Converter Functions
+-- NEW: Ticket Converter Functions
 local function useTicketConverter()
     if not useTicketConverters then return false end
     if tick() - lastConverterUseTime < converterCooldown then return false end
@@ -448,7 +532,7 @@ local function useTicketConverter()
     end)
     
     if success then
-        addToConsole("🎫 Used " .. converterName .. " 🎄")
+        addToConsole("🎫 Used " .. converterName)
         lastConverterUseTime = tick()
         
         -- Move to next converter in sequence
@@ -462,71 +546,32 @@ local function useTicketConverter()
     return false
 end
 
--- 🎁 NEW: Auto Toys Loop
+-- NEW: Auto Toys Loop
 local function updateToys()
     local currentTime = tick()
     
-    -- 🏔️ Mountain Booster every 30 minutes
+    -- Mountain Booster every 30 minutes
     if mountainBoosterEnabled and currentTime - lastMountainBoosterTime >= 1800 then
         useMountainBooster()
     end
     
-    -- 🔴 Red Booster every 30 minutes
+    -- Red Booster every 30 minutes
     if redBoosterEnabled and currentTime - lastRedBoosterTime >= 1800 then
         useRedBooster()
     end
     
-    -- 🔵 Blue Booster every 30 minutes
+    -- Blue Booster every 30 minutes
     if blueBoosterEnabled and currentTime - lastBlueBoosterTime >= 1800 then
         useBlueBooster()
     end
     
-    -- ⏰ Wealth Clock every 1 hour
+    -- Wealth Clock every 1 hour
     if wealthClockEnabled and currentTime - lastWealthClockTime >= 3600 then
         useWealthClock()
     end
 end
 
--- 🎄 NEW: AUTOMATIC HIVE CLAIMING SYSTEM
-local function claimAllHives()
-    addToConsole("🎄 Attempting to claim hives automatically...")
-    
-    local hivesToClaim = {"Hive_1", "Hive_2", "Hive_3", "Hive_4", "Hive_5"}
-    local claimedHives = {}
-    
-    for _, hiveName in ipairs(hivesToClaim) do
-        local hive = workspace:FindFirstChild("Hives")
-        if hive then
-            hive = hive:FindFirstChild(hiveName)
-            if hive then
-                local args = {hive}
-                local success = pcall(function()
-                    game:GetService("ReplicatedStorage"):WaitForChild("Remotes"):WaitForChild("ClaimHive"):FireServer(unpack(args))
-                    return true
-                end)
-                
-                if success then
-                    table.insert(claimedHives, hiveName)
-                    addToConsole("✅ Claimed " .. hiveName .. " 🎄")
-                else
-                    addToConsole("❌ Failed to claim " .. hiveName)
-                end
-                
-                task.wait(1) -- Wait 1 second between claims
-            end
-        end
-    end
-    
-    if #claimedHives > 0 then
-        addToConsole("🎄 Successfully claimed " .. #claimedHives .. " hives!")
-    else
-        addToConsole("❄️ No hives were claimed")
-    end
-    
-    return claimedHives
-end
-
--- ❄️ Simple Anti-Lag System
+-- Simple Anti-Lag System
 local function runAntiLag()
     if not toggles.antiLag then return end
     
@@ -560,10 +605,10 @@ local function runAntiLag()
     end
 
     toggles.objectsDeleted = toggles.objectsDeleted + deleted
-    addToConsole("❄️ Deleted " .. deleted .. " laggy objects! 🎄")
+    addToConsole("🌿 Deleted " .. deleted .. " laggy objects")
 end
 
--- 🎄 Performance Monitoring
+-- Performance Monitoring
 local function updatePerformanceStats()
     toggles.performanceStats.fps = math.floor(1 / RunService.Heartbeat:Wait())
     
@@ -573,12 +618,12 @@ local function updatePerformanceStats()
         toggles.performanceStats.memory = math.floor(memory:GetValue() / 1024 / 1024)
     end
     
-    if debugLabels.fps then debugLabels.fps:SetText("🎮 FPS: " .. toggles.performanceStats.fps) end
-    if debugLabels.memory then debugLabels.memory:SetText("💾 Memory: " .. toggles.performanceStats.memory .. " MB") end
-    if debugLabels.objects then debugLabels.objects:SetText("🗑️ Objects Deleted: " .. toggles.objectsDeleted) end
+    if debugLabels.fps then debugLabels.fps:SetText("FPS: " .. toggles.performanceStats.fps) end
+    if debugLabels.memory then debugLabels.memory:SetText("Memory: " .. toggles.performanceStats.memory .. " MB") end
+    if debugLabels.objects then debugLabels.objects:SetText("Objects Deleted: " .. toggles.objectsDeleted) end
 end
 
--- 🎅 Utility Functions
+-- Utility Functions
 local function GetCharacter()
     return player.Character or player.CharacterAdded:Wait()
 end
@@ -586,12 +631,12 @@ end
 local function SafeCall(func, name)
     local success, err = pcall(func)
     if not success then
-        addToConsole("🎄 Error in " .. (name or "unknown") .. ": " .. err)
+        addToConsole("Error in " .. (name or "unknown") .. ": " .. err)
     end
     return success
 end
 
--- 🍯 IMPROVED: Update honey statistics - starts at 0, continues tracking after first auto farm
+-- IMPROVED: Update honey statistics - starts at 0, continues tracking after first auto farm
 local function updateHoneyStats()
     local currentHoney = getCurrentHoney()
     
@@ -608,7 +653,7 @@ local function updateHoneyStats()
         honeyStats.sessionHoney = 0 -- NEW: Reset session honey
         honeyStats.dailyHoney = 0   -- NEW: Reset daily honey
         honeyStats.lastHoneyCheck = tick()
-        addToConsole("📊 Honey tracking started! 🎄")
+        addToConsole("📊 Honey tracking started")
         return
     end
     
@@ -638,187 +683,30 @@ local function updateHoneyStats()
     end
 end
 
--- 🏠 Auto-detect owned hive
-local function getOwnedHive()
-    local hiveObject = player:FindFirstChild("Hive")
-    if hiveObject and hiveObject:IsA("ObjectValue") and hiveObject.Value then
-        local hiveName = hiveObject.Value.Name
-        if hiveCoords[hiveName] then
-            return hiveName
-        end
-    end
-    return nil
-end
-
-local ownedHive = getOwnedHive()
-local displayHiveName = ownedHive and "🏠 Hive" or "💔 None"
-
--- 🎄 IMPROVED: Periodic hive checking with auto-claiming
-local function checkHiveOwnership()
-    if tick() - toggles.lastHiveCheckTime >= HIVE_CHECK_INTERVAL then
-        local previousHive = ownedHive
-        ownedHive = getOwnedHive()
-        
-        -- If no hive owned, try to claim one automatically
-        if not ownedHive then
-            local claimedHives = claimAllHives()
-            if #claimedHives > 0 then
-                -- Wait a bit for the hive to be assigned
-                task.wait(2)
-                ownedHive = getOwnedHive()
-            end
-        end
-        
-        if ownedHive and ownedHive ~= previousHive then
-            addToConsole("🎄 New hive detected: " .. ownedHive)
-            displayHiveName = "🏠 Hive"
-            -- Auto-start farming if enabled
-            if toggles.autoFarm and not toggles.isFarming then
-                addToConsole("🎄 Auto-starting farm with new hive!")
-                startFarming()
-            end
-        elseif not ownedHive and previousHive then
-            addToConsole("💔 Hive lost")
-            displayHiveName = "💔 None"
-        elseif ownedHive and previousHive == nil then
-            addToConsole("🎄 Hive acquired: " .. ownedHive)
-            displayHiveName = "🏠 Hive"
-        end
-        
-        toggles.lastHiveCheckTime = tick()
-    end
-end
--- 🎄 FIXED SMOOTH TWEEN MOVEMENT SYSTEM
-local function smoothTweenToPosition(targetPos)
-    local character = GetCharacter()
-    local humanoid = character:FindFirstChild("Humanoid")
-    local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
-    if not humanoid or not humanoidRootPart then 
-        addToConsole("❄️ Tween: Missing character components")
-        return false 
-    end
-
-    local SPEED = toggles.tweenSpeed
-    local TARGET_HEIGHT = 3
-    local ANTI_FLING_FORCE = Vector3.new(0, -5, 0)
-    
-    local startPos = humanoidRootPart.Position
-    local adjustedTargetPos = Vector3.new(
-        targetPos.X,
-        targetPos.Y + TARGET_HEIGHT,
-        targetPos.Z
-    )
-    local originalLookVector = humanoidRootPart.CFrame.LookVector
-    
-    local directDistance = (startPos - adjustedTargetPos).Magnitude
-    local duration = directDistance / SPEED
-    
-    -- Clear previous movement trackers
-    if humanoidRootPart:FindFirstChild("MovementActive") then
-        humanoidRootPart.MovementActive:Destroy()
-    end
-    
-    local movementTracker = Instance.new("BoolValue")
-    movementTracker.Name = "MovementActive"
-    movementTracker.Parent = humanoidRootPart
-    
-    local movementCompleted = false
-    local startTime = tick()
-    
-    -- Store original states
-    local originalAutoRotate = humanoid.AutoRotate
-    local originalState = humanoid:GetState()
-    
-    humanoid:ChangeState(Enum.HumanoidStateType.Swimming)
-    humanoid.AutoRotate = false
-    
-    local connection
-    connection = RunService.Heartbeat:Connect(function()
-        if not movementTracker.Parent or not humanoidRootPart or not humanoidRootPart.Parent then
-            connection:Disconnect()
-            return
-        end
-        
-        local progress = math.min((tick() - startTime) / duration, 1)
-        local currentPos = startPos + (adjustedTargetPos - startPos) * progress
-        
-        -- Smooth vertical movement
-        currentPos = Vector3.new(
-            currentPos.X,
-            startPos.Y + (adjustedTargetPos.Y - startPos.Y) * progress,
-            currentPos.Z
-        )
-        
-        -- Apply movement
-        humanoidRootPart.CFrame = CFrame.new(currentPos, currentPos + originalLookVector)
-        
-        -- Anti-fling at the end
-        humanoidRootPart.Velocity = progress > 0.9 and ANTI_FLING_FORCE or Vector3.new(0, math.min(humanoidRootPart.Velocity.Y, 0), 0)
-        
-        if progress >= 1 then
-            connection:Disconnect()
-            movementTracker:Destroy()
-            
-            -- Restore original states
-            humanoid.AutoRotate = originalAutoRotate
-            humanoid:ChangeState(originalState)
-            
-            -- Final positioning
-            local currentOrientation = humanoidRootPart.CFrame.Rotation
-            humanoidRootPart.CFrame = CFrame.new(
-                targetPos.X,
-                targetPos.Y + TARGET_HEIGHT,
-                targetPos.Z
-            ) * currentOrientation
-            
-            -- Stop all movement
-            humanoidRootPart.Velocity = Vector3.zero
-            task.wait(0.1)
-            humanoidRootPart.Velocity = Vector3.zero
-            movementCompleted = true
-        end
-    end)
-    
-    -- Cleanup on character change
-    character.AncestryChanged:Connect(function()
-        if not character.Parent then
-            connection:Disconnect()
-            if movementTracker.Parent then 
-                movementTracker:Destroy() 
-            end
-        end
-    end)
-    
-    -- Wait for movement to complete with timeout
-    local waitStart = tick()
-    while not movementCompleted and tick() - waitStart < duration + 5 do
-        task.wait(0.1)
-    end
-    
-    if movementCompleted then
-        addToConsole("✅ Tween movement completed! 🎄")
-    else
-        addToConsole("❄️ Tween movement timeout")
-    end
-    
-    return movementCompleted
-end
-
--- 🎄 NEW IMPROVED PATHFINDING SYSTEM (Using your provided script)
-local pathfindingActive = false
+-- NEW: Improved Pathfinding System
+local character, humanoid, rootpart = nil, nil, nil
+local active = false
+local targetPos = nil
 local pathConnection, blockedConnection = nil, nil
 
-local function cleanupPathfindingConnections()
+local function updateCharacter()
+    character = player.Character
+    if character then
+        humanoid = character:FindFirstChildOfClass("Humanoid")
+        rootpart = character:FindFirstChild("HumanoidRootPart")
+    end
+end
+
+player.CharacterAdded:Connect(updateCharacter)
+updateCharacter()
+
+local function cleanupConnections()
     if pathConnection then pathConnection:Disconnect() end
     if blockedConnection then blockedConnection:Disconnect() end
     pathConnection, blockedConnection = nil, nil
 end
 
 local function createPath(target)
-    local character = GetCharacter()
-    local rootpart = character and character:FindFirstChild("HumanoidRootPart")
-    if not rootpart then return nil end
-    
     local path = PathfindingService:CreatePath({
         AgentRadius = 2.8,
         AgentHeight = 5.8,
@@ -838,20 +726,14 @@ local function createPath(target)
 end
 
 local function followPath(path)
-    local character = GetCharacter()
-    local humanoid = character and character:FindFirstChildOfClass("Humanoid")
-    local rootpart = character and character:FindFirstChild("HumanoidRootPart")
-    
-    if not humanoid or not rootpart then return false end
-
     local waypoints = path:GetWaypoints()
 
     blockedConnection = path.Blocked:Connect(function()
-        cleanupPathfindingConnections()
+        cleanupConnections()
     end)
 
     for index, waypoint in ipairs(waypoints) do
-        if not pathfindingActive or not rootpart or not rootpart.Parent then
+        if not active or not rootpart or not rootpart.Parent then
             return false
         end
 
@@ -878,7 +760,7 @@ local function followPath(path)
                 humanoid.Jump = true
                 task.wait(0.1)
             end
-        until reached or tick() - startTime > (index == 1 and 2 or 4)
+        until tick() - startTime > (index == 1 and 2 or 4) or not moveFinishedConnection
 
         if moveFinishedConnection then moveFinishedConnection:Disconnect() end
 
@@ -889,82 +771,138 @@ local function followPath(path)
 end
 
 function startPathfinding(target)
-    local character = GetCharacter()
-    local rootpart = character and character:FindFirstChild("HumanoidRootPart")
     if not rootpart then return end
 
-    pathfindingActive = true
-    cleanupPathfindingConnections()
+    targetPos = target
+    active = true
+    cleanupConnections()
 
     task.spawn(function()
-        while pathfindingActive and rootpart and rootpart.Parent do
-            local path = createPath(target)
+        while active and rootpart and rootpart.Parent do
+            local path = createPath(targetPos)
             if path then
                 local reachedEnd = followPath(path)
                 if reachedEnd then break end
             end
             task.wait(0.3)
         end
-        pathfindingActive = false
-        cleanupPathfindingConnections()
-    end)
-end
+        active = false
+        cleanupConnections()
+        end
+        end
 
 function stopPathfinding()
-    pathfindingActive = false
-    cleanupPathfindingConnections()
+    active = false
+    cleanupConnections()
 end
 
--- 🎄 IMPROVED WALK MOVEMENT USING NEW PATHFINDING
-local function moveToPositionWalk(targetPos)
-    addToConsole("🎄 Starting pathfinding movement...")
-    
+-- FIXED SMOOTH TWEEN MOVEMENT SYSTEM
+local function smoothTweenToPosition(targetPos)
     local character = GetCharacter()
-    local humanoid = character and character:FindFirstChildOfClass("Humanoid")
-    if not humanoid then 
-        addToConsole("❄️ Walk: Missing humanoid")
-        return false 
+    local humanoid = character:FindFirstChild("Humanoid")
+    local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
+    if not humanoid or not humanoidRootPart then return false end
+
+    local SPEED = toggles.tweenSpeed
+    local TARGET_HEIGHT = 3
+    local ANTI_FLING_FORCE = Vector3.new(0, -5, 0)
+    
+    local startPos = humanoidRootPart.Position
+    local adjustedTargetPos = Vector3.new(
+        targetPos.X,
+        targetPos.Y + TARGET_HEIGHT,
+        targetPos.Z
+    )
+    local originalLookVector = humanoidRootPart.CFrame.LookVector
+    
+    local directDistance = (startPos - adjustedTargetPos).Magnitude
+    local duration = directDistance / SPEED
+    
+    humanoid:ChangeState(Enum.HumanoidStateType.Swimming)
+    humanoid.AutoRotate = false
+    
+    if humanoidRootPart:FindFirstChild("MovementActive") then
+        humanoidRootPart.MovementActive:Destroy()
     end
     
-    -- Stop any existing pathfinding
-    stopPathfinding()
+    local movementTracker = Instance.new("BoolValue")
+    movementTracker.Name = "MovementActive"
+    movementTracker.Parent = humanoidRootPart
     
-    -- Start new pathfinding
-    startPathfinding(targetPos)
+    local movementCompleted = false
+    local startTime = tick() -- FIXED: Moved this before the connection
     
-    -- Wait for completion with timeout
-    local startTime = tick()
-    while pathfindingActive and tick() - startTime < 30 do
-        local dist = (character.HumanoidRootPart.Position - targetPos).Magnitude
-        if dist < 10 then
-            stopPathfinding()
-            addToConsole("✅ Pathfinding completed successfully! 🎄")
-            return true
+    local connection
+    connection = RunService.Heartbeat:Connect(function()
+        if not movementTracker.Parent then
+            connection:Disconnect()
+            return
         end
-        task.wait(0.5)
+        
+        local progress = math.min((tick() - startTime) / duration, 1)
+        local currentPos = startPos + (adjustedTargetPos - startPos) * progress
+        
+        currentPos = Vector3.new(
+            currentPos.X,
+            startPos.Y + (adjustedTargetPos.Y - startPos.Y) * progress,
+            currentPos.Z
+        )
+        
+        humanoidRootPart.CFrame = CFrame.new(currentPos, currentPos + originalLookVector)
+        
+        humanoidRootPart.Velocity = progress > 0.9 and ANTI_FLING_FORCE or Vector3.new(0, math.min(humanoidRootPart.Velocity.Y, 0), 0)
+        
+        if progress >= 1 then
+            connection:Disconnect()
+            movementTracker:Destroy()
+            humanoid.AutoRotate = true
+            humanoid:ChangeState(Enum.HumanoidStateType.Running)
+            
+            local currentOrientation = humanoidRootPart.CFrame.Rotation
+            humanoidRootPart.CFrame = CFrame.new(
+                targetPos.X,
+                targetPos.Y + TARGET_HEIGHT,
+                targetPos.Z
+            ) * currentOrientation
+            
+            humanoidRootPart.Velocity = Vector3.zero
+            task.wait(0.1)
+            humanoidRootPart.Velocity = Vector3.zero
+            movementCompleted = true
+        end
+    end)
+    
+    character.AncestryChanged:Connect(function()
+        if not character.Parent then
+            connection:Disconnect()
+            if movementTracker.Parent then 
+                movementTracker:Destroy() 
+            end
+        end
+    end)
+    
+    -- Wait for movement to complete with timeout
+    local waitStart = tick()
+    while not movementCompleted and tick() - waitStart < duration + 5 do
+        task.wait(0.1)
     end
     
-    stopPathfinding()
-    
-    if (character.HumanoidRootPart.Position - targetPos).Magnitude < 15 then
-        addToConsole("✅ Reached target area! 🎄")
-        return true
-    else
-        addToConsole("❄️ Pathfinding timeout")
-        return false
-    end
+    return movementCompleted
 end
 
--- 🎄 Main Movement Function
+-- Improved Walk Movement with NEW Pathfinding
+local function moveToPositionWalk(targetPos)
+    return startPathfinding(targetPos)
+end
+
+-- Main Movement Function
 local function moveToPosition(targetPos)
     toggles.isMoving = true
     
     local success = false
     if toggles.movementMethod == "Tween" then
-        addToConsole("🎄 Using Tween movement...")
         success = smoothTweenToPosition(targetPos)
     else
-        addToConsole("🎄 Using Walk movement...")
         success = moveToPositionWalk(targetPos)
     end
     
@@ -972,7 +910,7 @@ local function moveToPosition(targetPos)
     return success
 end
 
--- ❄️ Optimized Movement Functions
+-- Optimized Movement Functions
 local function getRandomPositionInField()
     local fieldPos = fieldCoords[toggles.field]
     if not fieldPos then return nil end
@@ -1007,7 +945,8 @@ local function performContinuousMovement()
         end
     end
 end
--- 🚿 IMPROVED AUTO SPRINKLERS SYSTEM - MORE STABLE AND RELIABLE
+
+-- IMPROVED AUTO SPRINKLERS SYSTEM - MORE STABLE AND RELIABLE
 local function getFieldFlowerPart(fieldName)
     local fieldsFolder = workspace:WaitForChild("Fields")
     local field = fieldsFolder:WaitForChild(fieldName)
@@ -1020,7 +959,7 @@ end
 local function useSprinklerRemote(fieldName)
     local flowerPart = getFieldFlowerPart(fieldName)
     if not flowerPart then
-        addToConsole("❌ Could not find FlowerPart 🎄")
+        addToConsole("❌ Could not find FlowerPart")
         return false
     end
     
@@ -1043,7 +982,7 @@ local function useSprinklerRemote(fieldName)
     end
 end
 
--- 🎁 NEW: Function to detect how many sprinklers are currently placed
+-- NEW: Function to detect how many sprinklers are currently placed
 local function getPlacedSprinklersCount()
     local placedCount = 0
     local character = GetCharacter()
@@ -1069,7 +1008,7 @@ local function getPlacedSprinklersCount()
     return placedCount
 end
 
--- 🎄 IMPROVED: More reliable sprinkler placement with detection
+-- IMPROVED: More reliable sprinkler placement with detection
 local function placeSprinklers()
     if not autoSprinklersEnabled then return end
     if not toggles.autoFarm then return end
@@ -1129,7 +1068,7 @@ local function placeSprinklers()
     
     local successfulPlacements = 0
     
-    -- 🎄 IMPROVED: Better placement logic with retry mechanism
+    -- IMPROVED: Better placement logic with retry mechanism
     for i, position in ipairs(positions) do
         if i > placementCount then break end
         
@@ -1162,7 +1101,7 @@ local function placeSprinklers()
     -- NEW: Update placed sprinklers count
     placedSprinklersCount = getPlacedSprinklersCount()
     
-    -- 🎄 IMPROVED: Reset sprinkler state based on success
+    -- IMPROVED: Reset sprinkler state based on success
     if successfulPlacements > 0 or placedSprinklersCount >= expectedSprinklerCount then
         sprinklersPlaced = true
         sprinklerRetryCount = 0
@@ -1179,7 +1118,7 @@ local function placeSprinklers()
     placingSprinklers = false
 end
 
--- ❄️ IMPROVED: Better sprinkler reset with field visit tracking
+-- IMPROVED: Better sprinkler reset with field visit tracking
 local function resetSprinklers()
     sprinklersPlaced = false
     sprinklerRetryCount = 0
@@ -1190,14 +1129,14 @@ local function resetSprinklers()
     end
 end
 
--- 🎄 IMPROVED: More reliable field changing with better sprinkler management
+-- IMPROVED: More reliable field changing with better sprinkler management
 local function changeFieldWhileFarming(newField)
     if not toggles.autoFarm or not toggles.isFarming then return end
     
     local newFieldPos = fieldCoords[newField]
     if not newFieldPos then return end
     
-    addToConsole("🔄 Changing field to: " .. newField .. " 🎄")
+    addToConsole("🔄 Changing field to: " .. newField)
     
     -- IMPROVED: Fire sprinkler remote multiple times to ensure unequip
     if autoSprinklersEnabled then
@@ -1228,16 +1167,15 @@ local function changeFieldWhileFarming(newField)
             placeSprinklers()
         end
         
-        addToConsole("✅ Arrived at new field! 🎄")
+        addToConsole("✅ Arrived at new field")
     else
         addToConsole("❌ Failed to reach new field")
     end
-end
-
--- 🎅 Death respawn system
+    end
+    -- Death respawn system
 local function onCharacterDeath()
     if toggles.autoFarm and toggles.isFarming then
-        addToConsole("💀 Character died - respawning to field... 🎄")
+        addToConsole("💀 Character died - respawning to field...")
         
         -- Wait for respawn
         task.wait(3)
@@ -1254,10 +1192,10 @@ local function onCharacterDeath()
             -- Tween back to field immediately
             local fieldPos = fieldCoords[toggles.field]
             if fieldPos then
-                addToConsole("🔄 Respawning to field 🎄")
+                addToConsole("🔄 Respawning to field")
                 if moveToPosition(fieldPos) then
                     toggles.atField = true
-                    addToConsole("✅ Respawned to field successfully! ⛄")
+                    addToConsole("✅ Respawned to field successfully")
                     
                     -- IMPROVED: Better sprinkler placement after respawn
                     if autoSprinklersEnabled then
@@ -1278,7 +1216,7 @@ local function onCharacterDeath()
     end
 end
 
--- 🎄 Setup death detection
+-- Setup death detection
 local function setupDeathDetection()
     local character = GetCharacter()
     local humanoid = character:FindFirstChild("Humanoid")
@@ -1297,7 +1235,7 @@ local function setupDeathDetection()
     end)
 end
 
--- 🎁 Auto Equip Tools Function
+-- Auto Equip Tools Function
 local function equipAllTools()
     local character = GetCharacter()
     local humanoid = character and character:FindFirstChild("Humanoid")
@@ -1314,7 +1252,7 @@ local function equipAllTools()
     end
 end
 
--- ❄️ Auto Equip Loop
+-- Auto Equip Loop
 local lastEquipTime = 0
 local function autoEquipTools()
     if not toggles.autoEquip then return end
@@ -1324,7 +1262,10 @@ local function autoEquipTools()
     lastEquipTime = tick()
 end
 
--- 🎄 Auto-dig function - UPDATED FOR ALL TOOLS
+-- Auto-dig variables
+local digRunning = false
+
+-- Auto-dig function - UPDATED FOR ALL TOOLS
 local function DigLoop()
     if digRunning then return end
     digRunning = true
@@ -1352,7 +1293,7 @@ local function DigLoop()
     digRunning = false
 end
 
--- 🎁 Token Collection
+-- Token Collection
 local isCollectingToken = false
 
 local function getNearestToken()
@@ -1397,7 +1338,7 @@ local function collectTokens()
     end
 end
 
--- 🍯 Pollen Tracking
+-- Pollen Tracking
 local function updatePollenTracking()
     if not toggles.atField then return end
     
@@ -1429,7 +1370,7 @@ local function shouldReturnToField()
     return currentPollen == 0
 end
 
--- 🎄 NEW: Improved converting with ticket converters
+-- NEW: Improved converting with ticket converters
 local function startConverting()
     if toggles.isConverting or not ownedHive then return end
     
@@ -1445,18 +1386,18 @@ local function startConverting()
     toggles.atHive = false
     toggles.isMoving = false
     
-    addToConsole("🎄 Moving to hive...")
+    addToConsole("Moving to hive")
     
     -- Move to hive with selected movement method
     if moveToPosition(hivePos) then
         toggles.atHive = true
-        addToConsole("✅ At hive! 🏠")
+        addToConsole("✅ At hive")
         
         task.wait(2)
         
         -- NEW: Use ticket converters if enabled
         if useTicketConverters then
-            addToConsole("🎫 Using ticket converters... 🎁")
+            addToConsole("🎫 Using ticket converters...")
             local converterUsed = false
             
             -- Try each converter in sequence
@@ -1468,7 +1409,7 @@ local function startConverting()
                     -- Check if pollen was converted
                     local pollenAfterConvert = getCurrentPollen()
                     if pollenAfterConvert == 0 then
-                        addToConsole("✅ Successfully converted with ticket converter! 🎄")
+                        addToConsole("✅ Successfully converted with ticket converter")
                         break
                     else
                         addToConsole("🔄 Converter didn't work, trying next...")
@@ -1479,7 +1420,7 @@ local function startConverting()
             
             -- If ticket converters didn't work or aren't enabled, use normal conversion
             if not converterUsed or getCurrentPollen() > 0 then
-                addToConsole("🍯 Converting honey normally 🎅")
+                addToConsole("🍯 Converting honey normally")
                 local makeHoneyRemote = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("MakeHoney")
                 if makeHoneyRemote then
                     local args = {true}
@@ -1488,7 +1429,7 @@ local function startConverting()
             end
         else
             -- Normal honey conversion
-            addToConsole("🍯 Converting honey 🎄")
+            addToConsole("🍯 Converting honey")
             local makeHoneyRemote = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("MakeHoney")
             if makeHoneyRemote then
                 local args = {true}
@@ -1501,7 +1442,7 @@ local function startConverting()
     end
 end
 
--- 🎄 FIXED: Farming Logic - REMOVED CHRISTMAS EMOJIS FROM FIELD NAMES
+-- Farming Logic
 local function startFarming()
     if not toggles.autoFarm or toggles.isFarming or not ownedHive then return end
     
@@ -1520,7 +1461,7 @@ local function startFarming()
     toggles.fieldArrivalTime = tick()
     toggles.hasCollectedPollen = false
     
-    addToConsole("🎄 Moving to: " .. toggles.field)
+    addToConsole("Moving to: " .. toggles.field)
     
     -- Move to field with selected movement method
     if moveToPosition(fieldPos) then
@@ -1531,7 +1472,7 @@ local function startFarming()
         toggles.fieldArrivalTime = tick()
         toggles.hasCollectedPollen = (initialPollen > 0)
         
-        addToConsole("✅ Arrived at field! 🎄")
+        addToConsole("✅ Arrived at field")
         
         -- IMPROVED: Better sprinkler placement timing
         if autoSprinklersEnabled then
@@ -1549,7 +1490,7 @@ local function startFarming()
     end
 end
 
--- ❄️ Main Loop
+-- Main Loop
 local lastUpdateTime = 0
 local function updateFarmState()
     if not toggles.autoFarm then return end
@@ -1567,7 +1508,7 @@ local function updateFarmState()
     -- State transitions
     if toggles.isFarming and toggles.atField then
         if shouldConvertToHive() then
-            addToConsole("🎄 Converting to honey...")
+            addToConsole("Converting to honey")
             startConverting()
         else
             -- Priority: Tokens > Movement
@@ -1580,7 +1521,7 @@ local function updateFarmState()
         
     elseif toggles.isConverting and toggles.atHive then
         if shouldReturnToField() then
-            addToConsole("🎄 Returning to field...")
+            addToConsole("Returning to field")
             -- Reset sprinklers when returning to field
             resetSprinklers()
             startFarming()
@@ -1588,7 +1529,7 @@ local function updateFarmState()
     end
 end
 
--- 🎅 Walkspeed Management
+-- Walkspeed Management
 local function updateWalkspeed()
     if not toggles.walkspeedEnabled then return end
     local humanoid = player.Character and player.Character:FindFirstChild("Humanoid")
@@ -1597,7 +1538,7 @@ local function updateWalkspeed()
     end
 end
 
--- 🎁 Token Management
+-- Token Management
 local function clearVisitedTokens()
     if tick() - toggles.lastTokenClearTime >= TOKEN_CLEAR_INTERVAL then
         toggles.visitedTokens = {}
@@ -1605,7 +1546,14 @@ local function clearVisitedTokens()
     end
 end
 
--- 🎄 UPDATED: Webhook System with Christmas theme
+-- Console System
+local consoleLogs = {}
+local maxConsoleLines = 30
+local consoleLabel = nil
+
+-- Debug System
+local debugLabels = {}
+    -- UPDATED: Webhook System with new stats
 local function sendWebhook()
     if not webhookEnabled or webhookURL == "" then return end
     
@@ -1625,71 +1573,72 @@ local function sendWebhook()
     
     local requestFunc = (syn and syn.request) or (http and http.request) or http_request or request
     if not requestFunc then
-            addToConsole("❌ No HTTP request function available 🎄")
+        addToConsole("❌ No HTTP request function available")
         return
     end
+    
     local currentHoney = getCurrentHoney()
     local currentPollen = getCurrentPollen()
     local scriptUptime = tick() - scriptStartTime
     
     local embed = {
-        title = "🎄 Lavender Hub Stats ⛄",
-        color = 0x228B22, -- Christmas Green
+        title = "Lavender Hub Stats",
+        color = 0x9B59B6,
         fields = {
             {
-                name = "🎅 Player",
+                name = "Player",
                 value = player.Name,
                 inline = true
             },
             {
-                name = "🍯 Current Honey",
+                name = "Current Honey",
                 value = formatNumberCorrect(currentHoney),
                 inline = true
             },
             {
-                name = "🌸 Current Pollen",
+                name = "Current Pollen",
                 value = formatNumberCorrect(currentPollen),
                 inline = true
             },
             {
-                name = "📊 Session Honey",
+                name = "Session Honey",
                 value = formatNumberCorrect(honeyStats.sessionHoney),
                 inline = true
             },
             {
-                name = "📅 Daily Honey",
+                name = "Daily Honey",
                 value = formatNumberCorrect(honeyStats.dailyHoney),
                 inline = true
             },
             {
-                name = "⏰ Hourly Honey Rate",
+                name = "Hourly Honey Rate",
                 value = formatNumberCorrect(honeyStats.hourlyRate) .. "/h",
                 inline = true
             },
             {
-                name = "🕒 Script Uptime",
+                name = "Script Uptime",
                 value = formatTime(scriptUptime),
                 inline = true
             },
             {
-                name = "🌾 Field",
+                name = "Field",
                 value = toggles.field,
                 inline = true
             },
             {
-                name = "🔧 Status",
-                value = toggles.isFarming and "🎄 Farming" or toggles.isConverting and "🏠 Converting" or "⛄ Idle",
+                name = "Status",
+                value = toggles.isFarming and "Farming" or toggles.isConverting and "Converting" or "Idle",
                 inline = true
             }
         },
         timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ"),
         footer = {
-            text = "🎄 Lavender Hub • " .. os.date("%H:%M:%S") .. " ⛄"
+            text = "Lavender Hub • " .. os.date("%H:%M:%S")
         }
     }
     
     local payload = {
-        username = "🎄 Lavender Hub ⛄",
+        username = "Lavender Hub",
         embeds = {embed}
     }
     
@@ -1710,540 +1659,665 @@ local function sendWebhook()
     end)
     
     if success then
-        addToConsole("✅ Webhook sent successfully! 🎄")
+        addToConsole("✅ Webhook sent successfully")
     else
         addToConsole("❌ Failed to send webhook: " .. tostring(result))
         webhookCooldownActive = false -- Reset cooldown on failure
     end
 end
--- 🎄 GUI Setup
-local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/deividcomsono/Obsidian/refs/heads/main/Library.lua"))()
-local ThemeManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/deividcomsono/Obsidian/main/addons/ThemeManager.lua"))()
-local SaveManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/deividcomsono/Obsidian/main/addons/SaveManager.lua"))()
 
-local Window = Library:CreateWindow({
-    Title = "🎄 Lavender Hub ⛄",
-    Footer = "v0.6 ( 🎄 MERRY CHRISTMAS!! 🎄)",
-    ToggleKeybind = Enum.KeyCode.RightControl,
-    Center = true,
-    AutoShow = true,
-    ShowCustomCursor = false,
-    Size = UDim2.fromOffset(650, 500),
-    Resizable = false
-})
-
--- 🏠 Home Tab
-local HomeTab = Window:AddTab("Home", "house")
-local HomeLeftGroupbox = HomeTab:AddLeftGroupbox("🎄 Stats")
-local WrappedLabel = HomeLeftGroupbox:AddLabel({ Text = "Loading... 🎄", DoesWrap = true })
-
--- 🌾 Farming Tab
-local MainTab = Window:AddTab("Farming", "shovel")
-
--- 🎄 Farming Settings
-local FarmingGroupbox = MainTab:AddLeftGroupbox("🎄 Farming")
-local FieldDropdown = FarmingGroupbox:AddDropdown("FieldDropdown", {
-    Values = {"Mushroom Field", "Blueberry Field", "Clover Field", "Spider Field", "Pineapple Field", "Strawberry Field", "Mountain Field", "Pine Field", "Watermelon Field", "Banana Field", "Cog Field"}, -- REMOVED CHRISTMAS EMOJIS
-    Default = 1,
-    Multi = false,
-    Text = "🌾 Field",
-    Callback = function(Value)
-        local oldField = toggles.field
-        toggles.field = Value
-        saveSettings()
-        
-        -- If farming and field changed, move to new field
-        if toggles.autoFarm and toggles.isFarming and oldField ~= Value then
-            changeFieldWhileFarming(Value)
+-- KEY SYSTEM GUI
+local function createKeySystem()
+    local screenGui = Instance.new("ScreenGui")
+    screenGui.Name = "LavenderHubKeySystem"
+    screenGui.Parent = CoreGui
+    
+    local frame = Instance.new("Frame")
+    frame.Size = UDim2.new(0, 400, 0, 250)
+    frame.Position = UDim2.new(0.5, -200, 0.5, -125)
+    frame.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+    frame.BorderSizePixel = 0
+    frame.Parent = screenGui
+    
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 8)
+    corner.Parent = frame
+    
+    local title = Instance.new("TextLabel")
+    title.Size = UDim2.new(1, 0, 0, 60)
+    title.Position = UDim2.new(0, 0, 0, 0)
+    title.BackgroundColor3 = Color3.fromRGB(155, 89, 182)
+    title.Text = "Lavender Hub - Key System"
+    title.TextColor3 = Color3.fromRGB(255, 255, 255)
+    title.TextSize = 20
+    title.Font = Enum.Font.GothamBold
+    title.Parent = frame
+    
+    local titleCorner = Instance.new("UICorner")
+    titleCorner.CornerRadius = UDim.new(0, 8)
+    titleCorner.Parent = title
+    
+    local infoLabel = Instance.new("TextLabel")
+    infoLabel.Size = UDim2.new(1, -40, 0, 60)
+    infoLabel.Position = UDim2.new(0, 20, 0, 70)
+    infoLabel.BackgroundTransparency = 1
+    infoLabel.Text = "Enter the key to access Lavender Hub\nJoin our Discord for the key:"
+    infoLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+    infoLabel.TextSize = 14
+    infoLabel.TextWrapped = true
+    infoLabel.Font = Enum.Font.Gotham
+    infoLabel.Parent = frame
+    
+    local discordButton = Instance.new("TextButton")
+    discordButton.Size = UDim2.new(1, -40, 0, 30)
+    discordButton.Position = UDim2.new(0, 20, 0, 140)
+    discordButton.BackgroundColor3 = Color3.fromRGB(88, 101, 242)
+    discordButton.Text = "Join Discord Server"
+    discordButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+    discordButton.TextSize = 14
+    discordButton.Font = Enum.Font.GothamBold
+    discordButton.Parent = frame
+    
+    local discordCorner = Instance.new("UICorner")
+    discordCorner.CornerRadius = UDim.new(0, 4)
+    discordCorner.Parent = discordButton
+    
+    local keyBox = Instance.new("TextBox")
+    keyBox.Size = UDim2.new(1, -40, 0, 35)
+    keyBox.Position = UDim2.new(0, 20, 0, 180)
+    keyBox.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+    keyBox.PlaceholderText = "Enter key here..."
+    keyBox.Text = ""
+    keyBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+    keyBox.TextSize = 14
+    keyBox.Font = Enum.Font.Gotham
+    keyBox.Parent = frame
+    
+    local keyCorner = Instance.new("UICorner")
+    keyCorner.CornerRadius = UDim.new(0, 4)
+    keyCorner.Parent = keyBox
+    
+    local verifyButton = Instance.new("TextButton")
+    verifyButton.Size = UDim2.new(1, -40, 0, 35)
+    verifyButton.Position = UDim2.new(0, 20, 0, 225)
+    verifyButton.BackgroundColor3 = Color3.fromRGB(46, 204, 113)
+    verifyButton.Text = "Verify Key"
+    verifyButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+    verifyButton.TextSize = 14
+    verifyButton.Font = Enum.Font.GothamBold
+    verifyButton.Parent = frame
+    
+    local verifyCorner = Instance.new("UICorner")
+    verifyCorner.CornerRadius = UDim.new(0, 4)
+    verifyCorner.Parent = verifyButton
+    
+    local statusLabel = Instance.new("TextLabel")
+    statusLabel.Size = UDim2.new(1, -40, 0, 20)
+    statusLabel.Position = UDim2.new(0, 20, 0, 270)
+    statusLabel.BackgroundTransparency = 1
+    statusLabel.Text = ""
+    statusLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+    statusLabel.TextSize = 12
+    statusLabel.Font = Enum.Font.Gotham
+    statusLabel.Parent = frame
+    
+    discordButton.MouseButton1Click:Connect(function()
+        if setclipboard then
+            setclipboard(discordLink)
         end
-    end
-})
-
-local AutoFarmToggle = FarmingGroupbox:AddToggle("AutoFarmToggle", {
-    Text = "🎄 Auto Farm",
-    Default = false,
-    Callback = function(Value)
-        toggles.autoFarm = Value
-        saveSettings()
-        if Value then
-            startFarming()
+        statusLabel.Text = "Discord link copied to clipboard!"
+        statusLabel.TextColor3 = Color3.fromRGB(46, 204, 113)
+    end)
+    
+    verifyButton.MouseButton1Click:Connect(function()
+        local enteredKey = keyBox.Text
+        if enteredKey == correctKey then
+            keyVerified = true
+            statusLabel.Text = "Key verified! Loading Lavender Hub..."
+            statusLabel.TextColor3 = Color3.fromRGB(46, 204, 113)
+            
+            -- Destroy key system and load main GUI
+            task.wait(1)
+            screenGui:Destroy()
+            loadMainGUI()
         else
-            toggles.isFarming = false
-            toggles.isConverting = false
-            toggles.atField = false
-            toggles.atHive = false
-            toggles.isMoving = false
+            statusLabel.Text = "Invalid key! Please try again."
+            statusLabel.TextColor3 = Color3.fromRGB(231, 76, 60)
         end
-    end
-})
+    end)
+    
+    return screenGui
+end
 
-local AutoDigToggle = FarmingGroupbox:AddToggle("AutoDigToggle", {
-    Text = "⛄ Auto Dig",
-    Default = false,
-    Callback = function(Value)
-        toggles.autoDig = Value
-        saveSettings()
-    end
-})
+-- Main GUI Setup Function
+local function loadMainGUI()
+    local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/deividcomsono/Obsidian/refs/heads/main/Library.lua"))()
+    local ThemeManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/deividcomsono/Obsidian/main/addons/ThemeManager.lua"))()
+    local SaveManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/deividcomsono/Obsidian/main/addons/SaveManager.lua"))()
 
-local AutoEquipToggle = FarmingGroupbox:AddToggle("AutoEquipToggle", {
-    Text = "🎁 Auto Equip Tools",
-    Default = false,
-    Callback = function(Value)
-        toggles.autoEquip = Value
-        saveSettings()
-        if Value then
-            addToConsole("🎄 Auto Equip Tools enabled!")
-            equipAllTools()
+    local Window = Library:CreateWindow({
+        Title = "Lavender Hub",
+        Footer = "v0.5 (Davi is a sigma)",
+        ToggleKeybind = Enum.KeyCode.RightControl,
+        Center = true,
+        AutoShow = true,
+        ShowCustomCursor = false,
+        Size = UDim2.fromOffset(650, 500),
+        Resizable = false
+    })
+
+    -- Home Tab
+    local HomeTab = Window:AddTab("Home", "house")
+    local HomeLeftGroupbox = HomeTab:AddLeftGroupbox("Stats")
+    local WrappedLabel = HomeLeftGroupbox:AddLabel({ Text = "Loading...", DoesWrap = true })
+
+    -- Farming Tab
+    local MainTab = Window:AddTab("Farming", "shovel")
+
+    -- Farming Settings
+    local FarmingGroupbox = MainTab:AddLeftGroupbox("Farming")
+    local FieldDropdown = FarmingGroupbox:AddDropdown("FieldDropdown", {
+        Values = {"Mushroom Field", "Blueberry Field", "Clover Field", "Spider Field", "Pineapple Field", "Strawberry Field", "Mountain Field", "Pine Field", "Watermelon Field", "Banana Field", "Cog Field"},
+        Default = 1,
+        Multi = false,
+        Text = "Field",
+        Callback = function(Value)
+            local oldField = toggles.field
+            toggles.field = Value
+            saveSettings()
+            
+            -- If farming and field changed, move to new field
+            if toggles.autoFarm and toggles.isFarming and oldField ~= Value then
+                changeFieldWhileFarming(Value)
+            end
+        end
+    })
+
+    local AutoFarmToggle = FarmingGroupbox:AddToggle("AutoFarmToggle", {
+        Text = "Auto Farm",
+        Default = false,
+        Callback = function(Value)
+            toggles.autoFarm = Value
+            saveSettings()
+            if Value then
+                startFarming()
+            else
+                toggles.isFarming = false
+                toggles.isConverting = false
+                toggles.atField = false
+                toggles.atHive = false
+                toggles.isMoving = false
+            end
+        end
+    })
+
+    local AutoDigToggle = FarmingGroupbox:AddToggle("AutoDigToggle", {
+        Text = "Auto Dig",
+        Default = false,
+        Callback = function(Value)
+            toggles.autoDig = Value
+            saveSettings()
+        end
+    })
+
+    local AutoEquipToggle = FarmingGroupbox:AddToggle("AutoEquipToggle", {
+        Text = "Auto Equip Tools",
+        Default = false,
+        Callback = function(Value)
+            toggles.autoEquip = Value
+            saveSettings()
+            if Value then
+                addToConsole("Auto Equip Tools enabled")
+                equipAllTools()
+            else
+                addToConsole("Auto Equip Tools disabled")
+            end
+        end
+    })
+
+    -- NEW: Ticket Converters Toggle
+    local TicketConvertersToggle = FarmingGroupbox:AddToggle("TicketConvertersToggle", {
+        Text = "Use Ticket Converters",
+        Default = false,
+        Callback = function(Value)
+            useTicketConverters = Value
+            saveSettings()
+            if Value then
+                addToConsole("🎫 Ticket Converters enabled")
+            else
+                addToConsole("🎫 Ticket Converters disabled")
+            end
+        end
+    })
+
+    -- IMPROVED AUTO SPRINKLERS - MORE STABLE
+    local AutoSprinklersToggle = FarmingGroupbox:AddToggle("AutoSprinklersToggle", {
+        Text = "Auto Sprinklers",
+        Default = false,
+        Callback = function(Value)
+            autoSprinklersEnabled = Value
+            saveSettings()
+            if Value then
+                addToConsole("🚿 Auto Sprinklers enabled")
+                sprinklerPlacementCount = 0
+                sprinklerRetryCount = 0
+                currentFieldVisits = {} -- Reset visits when enabling
+                resetSprinklers()
+            else
+                addToConsole("🚿 Auto Sprinklers disabled")
+            end
+        end
+    })
+
+    local SprinklerDropdown = FarmingGroupbox:AddDropdown("SprinklerDropdown", {
+        Values = {"Broken Sprinkler", "Basic Sprinkler", "Silver Soakers", "Golden Gushers", "Diamond Drenchers", "Supreme Saturator"},
+        Default = 2,
+        Multi = false,
+        Text = "Sprinkler Type",
+        Callback = function(Value)
+            selectedSprinkler = Value
+            saveSettings()
+            addToConsole("🚿 Sprinkler type set to: " .. Value)
+            resetSprinklers() -- Reset when changing sprinkler type
+        end
+    })
+
+    -- Movement Settings
+    local MovementGroupbox = MainTab:AddRightGroupbox("Movement")
+    local MovementMethodDropdown = MovementGroupbox:AddDropdown("MovementMethod", {
+        Values = {"Walk", "Tween"},
+        Default = 1,
+        Multi = false,
+        Text = "Method",
+        Callback = function(Value)
+            toggles.movementMethod = Value
+            saveSettings()
+        end
+    })
+
+    local TweenSpeedSlider = MovementGroupbox:AddSlider("TweenSpeed", {
+        Text = "Tween Speed",
+        Default = 70,
+        Min = 30,
+        Max = 150,
+        Rounding = 1,
+        Compact = true,
+        Callback = function(Value)
+            toggles.tweenSpeed = Value
+            saveSettings()
+        end
+    })
+
+    -- Player Settings
+    local PlayerGroupbox = MainTab:AddLeftGroupbox("Player")
+    local WalkspeedToggle = PlayerGroupbox:AddToggle("WalkspeedToggle", {
+        Text = "Walkspeed",
+        Default = false,
+        Callback = function(Value)
+            toggles.walkspeedEnabled = Value
+            saveSettings()
+            if not Value and player.Character then
+                local humanoid = player.Character:FindFirstChild("Humanoid")
+                if humanoid then humanoid.WalkSpeed = 16 end
+            end
+        end
+    })
+
+    local WalkspeedSlider = PlayerGroupbox:AddSlider("WalkspeedSlider", {
+        Text = "Speed",
+        Default = 50,
+        Min = 16,
+        Max = 100,
+        Rounding = 1,
+        Compact = true,
+        Callback = function(Value)
+            toggles.walkspeed = Value
+            saveSettings()
+        end
+    })
+
+    -- Anti-Lag Settings
+    local AntiLagGroupbox = MainTab:AddRightGroupbox("Performance")
+    local AntiLagToggle = AntiLagGroupbox:AddToggle("AntiLagToggle", {
+        Text = "Anti Lag",
+        Default = false,
+        Tooltip = "Delete fruits and nature objects to reduce lag",
+        Callback = function(Value)
+            toggles.antiLag = Value
+            saveSettings()
+            if Value then
+                addToConsole("Anti-Lag enabled - cleaning objects...")
+                runAntiLag()
+            else
+                addToConsole("Anti-Lag disabled")
+            end
+        end
+    })
+            -- NEW: Toys Tab
+    local ToysTab = Window:AddTab("Toys", "gift")
+
+    -- Mountain Booster
+    local MountainBoosterGroupbox = ToysTab:AddLeftGroupbox("Mountain Booster")
+    local MountainBoosterToggle = MountainBoosterGroupbox:AddToggle("MountainBoosterToggle", {
+        Text = "Auto Mountain Booster (30 min)",
+        Default = false,
+        Callback = function(Value)
+            mountainBoosterEnabled = Value
+            saveSettings()
+            if Value then
+                useMountainBooster()
+                addToConsole("🏔️ Auto Mountain Booster enabled")
+            else
+                addToConsole("🏔️ Auto Mountain Booster disabled")
+            end
+        end
+    })
+
+    -- Red Booster
+    local RedBoosterGroupbox = ToysTab:AddLeftGroupbox("Red Booster")
+    local RedBoosterToggle = RedBoosterGroupbox:AddToggle("RedBoosterToggle", {
+        Text = "Auto Red Booster (30 min)",
+        Default = false,
+        Callback = function(Value)
+            redBoosterEnabled = Value
+            saveSettings()
+            if Value then
+                useRedBooster()
+                addToConsole("🔴 Auto Red Booster enabled")
+            else
+                addToConsole("🔴 Auto Red Booster disabled")
+            end
+        end
+    })
+
+    -- Blue Booster
+    local BlueBoosterGroupbox = ToysTab:AddRightGroupbox("Blue Booster")
+    local BlueBoosterToggle = BlueBoosterGroupbox:AddToggle("BlueBoosterToggle", {
+        Text = "Auto Blue Booster (30 min)",
+        Default = false,
+        Callback = function(Value)
+            blueBoosterEnabled = Value
+            saveSettings()
+            if Value then
+                useBlueBooster()
+                addToConsole("🔵 Auto Blue Booster enabled")
+            else
+                addToConsole("🔵 Auto Blue Booster disabled")
+            end
+        end
+    })
+
+    -- Wealth Clock
+    local WealthClockGroupbox = ToysTab:AddRightGroupbox("Wealth Clock")
+    local WealthClockToggle = WealthClockGroupbox:AddToggle("WealthClockToggle", {
+        Text = "Auto Wealth Clock (1 hour)",
+        Default = false,
+        Callback = function(Value)
+            wealthClockEnabled = Value
+            saveSettings()
+            if Value then
+                useWealthClock()
+                addToConsole("⏰ Auto Wealth Clock enabled")
+            else
+                addToConsole("⏰ Auto Wealth Clock disabled")
+            end
+        end
+    })
+
+    -- Webhook Tab
+    local WebhookTab = Window:AddTab("Webhook", "globe")
+    local WebhookGroupbox = WebhookTab:AddLeftGroupbox("Webhook Settings")
+
+    local WebhookToggle = WebhookGroupbox:AddToggle("WebhookToggle", {
+        Text = "Enable Webhook",
+        Default = false,
+        Callback = function(Value)
+            webhookEnabled = Value
+            saveSettings()
+            if Value then
+                addToConsole("Webhook enabled")
+            else
+                addToConsole("Webhook disabled")
+            end
+        end
+    })
+
+    local WebhookURLBox = WebhookGroupbox:AddInput("WebhookURL", {
+        Text = "Webhook URL",
+        Default = "",
+        Placeholder = "https://discord.com/api/webhooks/...",
+        Callback = function(Value)
+            webhookURL = Value
+            saveSettings()
+        end
+    })
+
+    local WebhookIntervalSlider = WebhookGroupbox:AddSlider("WebhookInterval", {
+        Text = "Send Interval (minutes)",
+        Default = 5,
+        Min = 1,
+        Max = 60,
+        Rounding = 1,
+        Compact = true,
+        Callback = function(Value)
+            webhookInterval = Value
+            saveSettings()
+        end
+    })
+
+    WebhookGroupbox:AddButton("Send Test Webhook", function()
+        if webhookEnabled and webhookURL ~= "" then
+            addToConsole("Sending test webhook...")
+            sendWebhook()
         else
-            addToConsole("🎄 Auto Equip Tools disabled")
+            addToConsole("❌ Enable webhook and set URL first")
         end
-    end
-})
+    end)
 
--- 🎫 NEW: Ticket Converters Toggle
-local TicketConvertersToggle = FarmingGroupbox:AddToggle("TicketConvertersToggle", {
-    Text = "🎫 Use Ticket Converters",
-    Default = false,
-    Callback = function(Value)
-        useTicketConverters = Value
-        saveSettings()
-        if Value then
-            addToConsole("🎫 Ticket Converters enabled! 🎄")
-        else
-            addToConsole("🎫 Ticket Converters disabled")
-        end
-    end
-})
+    -- Console Tab
+    local ConsoleTab = Window:AddTab("Console", "terminal")
+    local ConsoleGroupbox = ConsoleTab:AddLeftGroupbox("Output")
+    consoleLabel = ConsoleGroupbox:AddLabel({ Text = "Lavender Hub v0.5 Ready", DoesWrap = true })
 
--- 🚿 IMPROVED AUTO SPRINKLERS - MORE STABLE
-local AutoSprinklersToggle = FarmingGroupbox:AddToggle("AutoSprinklersToggle", {
-    Text = "🚿 Auto Sprinklers",
-    Default = false,
-    Callback = function(Value)
-        autoSprinklersEnabled = Value
-        saveSettings()
-        if Value then
-            addToConsole("🚿 Auto Sprinklers enabled! 🎄")
-            sprinklerPlacementCount = 0
-            sprinklerRetryCount = 0
-            currentFieldVisits = {} -- Reset visits when enabling
-            resetSprinklers()
-        else
-            addToConsole("🚿 Auto Sprinklers disabled")
-        end
-    end
-})
+    -- Debug Tab
+    local DebugTab = Window:AddTab("Debug", "bug")
+    local DebugGroupbox = DebugTab:AddLeftGroupbox("Performance Stats")
+    debugLabels.fps = DebugGroupbox:AddLabel("FPS: 0")
+    debugLabels.memory = DebugGroupbox:AddLabel("Memory: 0 MB")
+    debugLabels.objects = DebugGroupbox:AddLabel("Objects Deleted: 0")
 
-local SprinklerDropdown = FarmingGroupbox:AddDropdown("SprinklerDropdown", {
-    Values = {"Broken Sprinkler", "Basic Sprinkler", "Silver Soakers", "Golden Gushers", "Diamond Drenchers", "Supreme Saturator"}, -- REMOVED CHRISTMAS EMOJIS
-    Default = 2,
-    Multi = false,
-    Text = "🚿 Sprinkler Type",
-    Callback = function(Value)
-        selectedSprinkler = Value
-        saveSettings()
-        addToConsole("🚿 Sprinkler type set to: " .. Value .. " 🎄")
-        resetSprinklers() -- Reset when changing sprinkler type
-    end
-})
+    local HoneyStatsGroupbox = DebugTab:AddRightGroupbox("Honey Statistics")
+    local HoneyMadeLabel = HoneyStatsGroupbox:AddLabel("Honey Made: 0")
+    local HourlyRateLabel = HoneyStatsGroupbox:AddLabel("Hourly Rate: 0")
+    local SessionHoneyLabel = HoneyStatsGroupbox:AddLabel("Session Honey: 0")
+    local DailyHoneyLabel = HoneyStatsGroupbox:AddLabel("Daily Honey: 0")
 
--- 🎄 Movement Settings
-local MovementGroupbox = MainTab:AddRightGroupbox("🎄 Movement")
-local MovementMethodDropdown = MovementGroupbox:AddDropdown("MovementMethod", {
-    Values = {"⛄ Walk", "🎄 Tween"},
-    Default = 1,
-    Multi = false,
-    Text = "🚶 Method",
-    Callback = function(Value)
-        toggles.movementMethod = Value
-        saveSettings()
-    end
-})
-
-local TweenSpeedSlider = MovementGroupbox:AddSlider("TweenSpeed", {
-    Text = "🎄 Tween Speed",
-    Default = 70,
-    Min = 30,
-    Max = 150,
-    Rounding = 1,
-    Compact = true,
-    Callback = function(Value)
-        toggles.tweenSpeed = Value
-        saveSettings()
-    end
-})
-
--- 🎅 Player Settings
-local PlayerGroupbox = MainTab:AddLeftGroupbox("🎅 Player")
-local WalkspeedToggle = PlayerGroupbox:AddToggle("WalkspeedToggle", {
-    Text = "⛄ Walkspeed",
-    Default = false,
-    Callback = function(Value)
-        toggles.walkspeedEnabled = Value
-        saveSettings()
-        if not Value and player.Character then
-            local humanoid = player.Character:FindFirstChild("Humanoid")
-            if humanoid then humanoid.WalkSpeed = 16 end
-        end
-    end
-})
-
-local WalkspeedSlider = PlayerGroupbox:AddSlider("WalkspeedSlider", {
-    Text = "🎄 Speed",
-    Default = 50,
-    Min = 16,
-    Max = 100,
-    Rounding = 1,
-    Compact = true,
-    Callback = function(Value)
-        toggles.walkspeed = Value
-        saveSettings()
-    end
-})
-
--- ❄️ Anti-Lag Settings
-local AntiLagGroupbox = MainTab:AddRightGroupbox("❄️ Performance")
-local AntiLagToggle = AntiLagGroupbox:AddToggle("AntiLagToggle", {
-    Text = "🎄 Anti Lag",
-    Default = false,
-    Tooltip = "Delete fruits and nature objects to reduce lag",
-    Callback = function(Value)
-        toggles.antiLag = Value
-        saveSettings()
-        if Value then
-            addToConsole("🎄 Anti-Lag enabled - cleaning objects...")
+    local DebugActionsGroupbox = DebugTab:AddRightGroupbox("Actions")
+    DebugActionsGroupbox:AddButton("Run Anti-Lag", function()
+        if toggles.antiLag then
             runAntiLag()
         else
-            addToConsole("🎄 Anti-Lag disabled")
+            addToConsole("Enable Anti-Lag first")
         end
-    end
-})
+    end)
 
--- 🎁 NEW: Toys Tab
-local ToysTab = Window:AddTab("Toys", "gift")
-
--- 🏔️ Mountain Booster
-local MountainBoosterGroupbox = ToysTab:AddLeftGroupbox("🏔️ Mountain Booster")
-local MountainBoosterToggle = MountainBoosterGroupbox:AddToggle("MountainBoosterToggle", {
-    Text = "🎄 Auto Mountain Booster (30 min)",
-    Default = false,
-    Callback = function(Value)
-        mountainBoosterEnabled = Value
-        saveSettings()
-        if Value then
-            useMountainBooster()
-            addToConsole("🏔️ Auto Mountain Booster enabled! 🎄")
-        else
-            addToConsole("🏔️ Auto Mountain Booster disabled")
+    DebugActionsGroupbox:AddButton("Clear Console", function()
+        consoleLogs = {}
+        if consoleLabel then
+            consoleLabel:SetText("Console cleared")
         end
-    end
-})
+    end)
 
--- 🔴 Red Booster
-local RedBoosterGroupbox = ToysTab:AddLeftGroupbox("🔴 Red Booster")
-local RedBoosterToggle = RedBoosterGroupbox:AddToggle("RedBoosterToggle", {
-    Text = "🎄 Auto Red Booster (30 min)",
-    Default = false,
-    Callback = function(Value)
-        redBoosterEnabled = Value
-        saveSettings()
-        if Value then
-            useRedBooster()
-            addToConsole("🔴 Auto Red Booster enabled! 🎄")
-        else
-            addToConsole("🔴 Auto Red Booster disabled")
-        end
-    end
-})
+    DebugActionsGroupbox:AddButton("Equip Tools", function()
+        equipAllTools()
+        addToConsole("Manually equipped all tools")
+    end)
 
--- 🔵 Blue Booster
-local BlueBoosterGroupbox = ToysTab:AddRightGroupbox("🔵 Blue Booster")
-local BlueBoosterToggle = BlueBoosterGroupbox:AddToggle("BlueBoosterToggle", {
-    Text = "🎄 Auto Blue Booster (30 min)",
-    Default = false,
-    Callback = function(Value)
-        blueBoosterEnabled = Value
-        saveSettings()
-        if Value then
-            useBlueBooster()
-            addToConsole("🔵 Auto Blue Booster enabled! 🎄")
-        else
-            addToConsole("🔵 Auto Blue Booster disabled")
-        end
-    end
-})
+    -- Status Groupbox
+    local StatusGroupbox = MainTab:AddRightGroupbox("Status")
+    local StatusLabel = StatusGroupbox:AddLabel("Status: Idle")
+    local PollenLabel = StatusGroupbox:AddLabel("Pollen: 0")
+    local HourlyHoneyLabel = StatusGroupbox:AddLabel("Hourly Honey: 0")
+    local SprinklerStatusLabel = StatusGroupbox:AddLabel("Sprinklers: 0 placed")
 
--- ⏰ Wealth Clock
-local WealthClockGroupbox = ToysTab:AddRightGroupbox("⏰ Wealth Clock")
-local WealthClockToggle = WealthClockGroupbox:AddToggle("WealthClockToggle", {
-    Text = "🎄 Auto Wealth Clock (1 hour)",
-    Default = false,
-    Callback = function(Value)
-        wealthClockEnabled = Value
-        saveSettings()
-        if Value then
-            useWealthClock()
-            addToConsole("⏰ Auto Wealth Clock enabled! 🎄")
-        else
-            addToConsole("⏰ Auto Wealth Clock disabled")
-        end
-    end
-})
+    -- UI Settings Tab
+    local UISettingsTab = Window:AddTab("UI Settings", "settings")
+    ThemeManager:SetLibrary(Library)
+    SaveManager:SetLibrary(Library)
+    SaveManager:SetIgnoreIndexes({ "MenuKeybind" })
+    SaveManager:BuildConfigSection(UISettingsTab)
+    ThemeManager:ApplyToTab(UISettingsTab)
+    SaveManager:LoadAutoloadConfig()
 
--- 🌐 Webhook Tab
-local WebhookTab = Window:AddTab("Webhook", "globe")
-local WebhookGroupbox = WebhookTab:AddLeftGroupbox("🎄 Webhook Settings")
+    -- Anti-AFK
+    player.Idled:Connect(function()
+        VirtualUser:Button2Down(Vector2.new(0, 0), workspace.CurrentCamera.CFrame)
+        task.wait(1)
+        VirtualUser:Button2Up(Vector2.new(0, 0), workspace.CurrentCamera.CFrame)
+    end)
 
-local WebhookToggle = WebhookGroupbox:AddToggle("WebhookToggle", {
-    Text = "🎄 Enable Webhook",
-    Default = false,
-    Callback = function(Value)
-        webhookEnabled = Value
-        saveSettings()
-        if Value then
-            addToConsole("🎄 Webhook enabled!")
-        else
-            addToConsole("🎄 Webhook disabled")
-        end
-    end
-})
+    -- Setup death detection on startup
+    setupDeathDetection()
 
-local WebhookURLBox = WebhookGroupbox:AddInput("WebhookURL", {
-    Text = "🎄 Webhook URL",
-    Default = "",
-    Placeholder = "https://discord.com/api/webhooks/...",
-    Callback = function(Value)
-        webhookURL = Value
-        saveSettings()
-    end
-})
-
-local WebhookIntervalSlider = WebhookGroupbox:AddSlider("WebhookInterval", {
-    Text = "🎄 Send Interval (minutes)",
-    Default = 5,
-    Min = 1,
-    Max = 60,
-    Rounding = 1,
-    Compact = true,
-    Callback = function(Value)
-        webhookInterval = Value
-        saveSettings()
-    end
-})
-
-WebhookGroupbox:AddButton("🎄 Send Test Webhook", function()
-    if webhookEnabled and webhookURL ~= "" then
-        addToConsole("🎄 Sending test webhook...")
+    -- Optimized Main Loops
+    local lastHeartbeatTime = 0
+    RunService.Heartbeat:Connect(function()
+        local currentTime = tick()
+        if currentTime - lastHeartbeatTime < 0.1 then return end
+        lastHeartbeatTime = currentTime
+        
+        updateFarmState()
+        updateWalkspeed()
+        clearVisitedTokens()
+        updatePerformanceStats()
+        autoEquipTools()
+        updateToys()
+        updateHoneyStats()
         sendWebhook()
-    else
-        addToConsole("❌ Enable webhook and set URL first 🎄")
-    end
-end)
-
--- 🖥️ Console Tab
-local ConsoleTab = Window:AddTab("Console", "terminal")
-local ConsoleGroupbox = ConsoleTab:AddLeftGroupbox("🎄 Output")
-consoleLabel = ConsoleGroupbox:AddLabel({ Text = "🎄 Lavender Hub v0.6 Ready! ⛄", DoesWrap = true })
-
--- 🐛 Debug Tab
-local DebugTab = Window:AddTab("Debug", "bug")
-local DebugGroupbox = DebugTab:AddLeftGroupbox("🎄 Performance Stats")
-debugLabels.fps = DebugGroupbox:AddLabel("🎮 FPS: 0")
-debugLabels.memory = DebugGroupbox:AddLabel("💾 Memory: 0 MB")
-debugLabels.objects = DebugGroupbox:AddLabel("🗑️ Objects Deleted: 0")
-
-local HoneyStatsGroupbox = DebugTab:AddRightGroupbox("🍯 Honey Statistics")
-local HoneyMadeLabel = HoneyStatsGroupbox:AddLabel("🍯 Honey Made: 0")
-local HourlyRateLabel = HoneyStatsGroupbox:AddLabel("⏰ Hourly Rate: 0")
-local SessionHoneyLabel = HoneyStatsGroupbox:AddLabel("📊 Session Honey: 0")
-local DailyHoneyLabel = HoneyStatsGroupbox:AddLabel("📅 Daily Honey: 0")
-
-local DebugActionsGroupbox = DebugTab:AddRightGroupbox("🎄 Actions")
-DebugActionsGroupbox:AddButton("🎄 Run Anti-Lag", function()
-    if toggles.antiLag then
-        runAntiLag()
-    else
-        addToConsole("🎄 Enable Anti-Lag first")
-    end
-end)
-
-DebugActionsGroupbox:AddButton("🎄 Clear Console", function()
-    consoleLogs = {}
-    if consoleLabel then
-        consoleLabel:SetText("🎄 Console cleared! ⛄")
-    end
-end)
-
-DebugActionsGroupbox:AddButton("🎄 Equip Tools", function()
-    equipAllTools()
-    addToConsole("🎄 Manually equipped all tools!")
-end)
-
--- 🔧 Status Groupbox
-local StatusGroupbox = MainTab:AddRightGroupbox("🎄 Status")
-local StatusLabel = StatusGroupbox:AddLabel("🔧 Status: Idle")
-local PollenLabel = StatusGroupbox:AddLabel("🌸 Pollen: 0")
-local HourlyHoneyLabel = StatusGroupbox:AddLabel("⏰ Hourly Honey: 0")
-local SprinklerStatusLabel = StatusGroupbox:AddLabel("🚿 Sprinklers: 0 placed")
-
--- ⚙️ UI Settings Tab
-local UISettingsTab = Window:AddTab("UI Settings", "settings")
-ThemeManager:SetLibrary(Library)
-SaveManager:SetLibrary(Library)
-SaveManager:SetIgnoreIndexes({ "MenuKeybind" })
-SaveManager:BuildConfigSection(UISettingsTab)
-ThemeManager:ApplyToTab(UISettingsTab)
-SaveManager:LoadAutoloadConfig()
-
--- 🎄 Anti-AFK
-player.Idled:Connect(function()
-    VirtualUser:Button2Down(Vector2.new(0, 0), workspace.CurrentCamera.CFrame)
-    task.wait(1)
-    VirtualUser:Button2Up(Vector2.new(0, 0), workspace.CurrentCamera.CFrame)
-end)
-
--- 🎅 Setup death detection on startup
-setupDeathDetection()
-
--- 🎄 AUTOMATIC HIVE CLAIMING ON STARTUP
-spawn(function()
-    task.wait(3) -- Wait for game to load
-    if not getOwnedHive() then
-        addToConsole("🎄 No hive detected, claiming automatically...")
-        claimAllHives()
-    else
-        addToConsole("🎄 Hive already owned: " .. ownedHive)
-    end
-end)
-
--- 🎄 Optimized Main Loops
-local lastHeartbeatTime = 0
-RunService.Heartbeat:Connect(function()
-    local currentTime = tick()
-    if currentTime - lastHeartbeatTime < 0.1 then return end
-    lastHeartbeatTime = currentTime
-    
-    updateFarmState()
-    updateWalkspeed()
-    clearVisitedTokens()
-    updatePerformanceStats()
-    autoEquipTools()
-    updateToys()
-    updateHoneyStats()
-    sendWebhook()
-    
-    -- 🎄 Update status display
-    local statusText = "⛄ Idle"
-    local currentPollen = getCurrentPollen()
-    local currentHoney = getCurrentHoney()
-    
-    if toggles.autoFarm then
-        if toggles.isFarming and toggles.atField then
-            statusText = "🎄 Farming"
-        elseif toggles.isConverting and toggles.atHive then
-            statusText = "🏠 Converting"
-        elseif toggles.isFarming then
-            statusText = "🎄 Moving to Field"
-        elseif toggles.isConverting then
-            statusText = "🏠 Moving to Hive"
+        
+        -- NEW: Auto claim hives if none owned
+        if not ownedHive and hiveClaimingEnabled then
+            claimHives()
         end
-    end
-    
-    StatusLabel:SetText("🔧 Status: " .. statusText)
-    PollenLabel:SetText("🌸 Pollen: " .. formatNumberCorrect(currentPollen))
-    HourlyHoneyLabel:SetText("⏰ Hourly Honey: " .. formatNumberCorrect(honeyStats.hourlyRate))
-    SprinklerStatusLabel:SetText("🚿 Sprinklers: " .. placedSprinklersCount .. "/" .. expectedSprinklerCount .. " placed")
-    
-    -- 🎄 Update debug labels
-    HoneyMadeLabel:SetText("🍯 Honey Made: " .. formatNumberCorrect(honeyStats.honeyMade))
-    HourlyRateLabel:SetText("⏰ Hourly Rate: " .. formatNumberCorrect(honeyStats.hourlyRate))
-    SessionHoneyLabel:SetText("📊 Session Honey: " .. formatNumberCorrect(honeyStats.sessionHoney))
-    DailyHoneyLabel:SetText("📅 Daily Honey: " .. formatNumberCorrect(honeyStats.dailyHoney))
-end)
-
--- 🎄 Stats Update Loop
-spawn(function()
-    while task.wait(1) do
+        
+        -- Update status display - USING CORRECT FORMATTING
+        local statusText = "Idle"
         local currentPollen = getCurrentPollen()
         local currentHoney = getCurrentHoney()
         
-        WrappedLabel:SetText(string.format(
-            "🍯 Honey: %s\n🌸 Pollen: %s\n🌾 Field: %s\n🏠 Hive: %s\n🚶 Move: %s\n⛄ Dig: %s\n🎁 Equip: %s\n🎄 Anti-Lag: %s\n⏰ Hourly Honey: %s\n🚿 Auto Sprinklers: %s\n🚿 Sprinkler Type: %s\n🎫 Ticket Converters: %s\n📊 Session Honey: %s\n📅 Daily Honey: %s",
-            formatNumberCorrect(currentHoney),
-            formatNumberCorrect(currentPollen),
-            toggles.field,
-            displayHiveName,
-            toggles.movementMethod,
-            toggles.autoDig and "ON" or "OFF",
-            toggles.autoEquip and "ON" or "OFF",
-            toggles.antiLag and "ON" or "OFF",
-            formatNumberCorrect(honeyStats.hourlyRate),
-            autoSprinklersEnabled and "ON" or "OFF",
-            selectedSprinkler,
-            useTicketConverters and "ON" or "OFF",
-            formatNumberCorrect(honeyStats.sessionHoney),
-            formatNumberCorrect(honeyStats.dailyHoney)
-        ))
+        if toggles.autoFarm then
+            if toggles.isFarming and toggles.atField then
+                statusText = "Farming"
+            elseif toggles.isConverting and toggles.atHive then
+                statusText = "Converting"
+            elseif toggles.isFarming then
+                statusText = "Moving to Field"
+            elseif toggles.isConverting then
+                statusText = "Moving to Hive"
+            end
+        end
+        
+        StatusLabel:SetText("Status: " .. statusText)
+        PollenLabel:SetText("Pollen: " .. formatNumberCorrect(currentPollen))
+        HourlyHoneyLabel:SetText("Hourly Honey: " .. formatNumberCorrect(honeyStats.hourlyRate))
+        SprinklerStatusLabel:SetText("Sprinklers: " .. placedSprinklersCount .. "/" .. expectedSprinklerCount .. " placed")
+        
+        -- Update debug labels
+        HoneyMadeLabel:SetText("Honey Made: " .. formatNumberCorrect(honeyStats.honeyMade))
+        HourlyRateLabel:SetText("Hourly Rate: " .. formatNumberCorrect(honeyStats.hourlyRate))
+        SessionHoneyLabel:SetText("Session Honey: " .. formatNumberCorrect(honeyStats.sessionHoney))
+        DailyHoneyLabel:SetText("Daily Honey: " .. formatNumberCorrect(honeyStats.dailyHoney))
+    end)
+
+    -- Stats Update Loop
+    spawn(function()
+        while task.wait(1) do
+            local currentPollen = getCurrentPollen()
+            local currentHoney = getCurrentHoney()
+            
+            WrappedLabel:SetText(string.format(
+                "Honey: %s\nPollen: %s\nField: %s\nHive: %s\nMove: %s\nDig: %s\nEquip: %s\nAnti-Lag: %s\nHourly Honey: %s\nAuto Sprinklers: %s\nSprinkler Type: %s\nTicket Converters: %s\nSession Honey: %s\nDaily Honey: %s",
+                formatNumberCorrect(currentHoney),
+                formatNumberCorrect(currentPollen),
+                toggles.field,
+                displayHiveName,
+                toggles.movementMethod,
+                toggles.autoDig and "ON" or "OFF",
+                toggles.autoEquip and "ON" or "OFF",
+                toggles.antiLag and "ON" or "OFF",
+                formatNumberCorrect(honeyStats.hourlyRate),
+                autoSprinklersEnabled and "ON" or "OFF",
+                selectedSprinkler,
+                useTicketConverters and "ON" or "OFF",
+                formatNumberCorrect(honeyStats.sessionHoney),
+                formatNumberCorrect(honeyStats.dailyHoney)
+            ))
+        end
+    end)
+
+    -- Load settings on startup
+    loadSettings()
+
+    -- Apply loaded settings to GUI
+    FieldDropdown:Set(toggles.field)
+    AutoFarmToggle:Set(toggles.autoFarm)
+    AutoDigToggle:Set(toggles.autoDig)
+    AutoEquipToggle:Set(toggles.autoEquip)
+    AntiLagToggle:Set(toggles.antiLag)
+    MovementMethodDropdown:Set(toggles.movementMethod)
+    TweenSpeedSlider:Set(toggles.tweenSpeed)
+    WalkspeedToggle:Set(toggles.walkspeedEnabled)
+    WalkspeedSlider:Set(toggles.walkspeed)
+    AutoSprinklersToggle:Set(autoSprinklersEnabled)
+    SprinklerDropdown:Set(selectedSprinkler)
+    WebhookToggle:Set(webhookEnabled)
+    WebhookURLBox:Set(webhookURL)
+    WebhookIntervalSlider:Set(webhookInterval)
+    TicketConvertersToggle:Set(useTicketConverters)
+    MountainBoosterToggle:Set(mountainBoosterEnabled)
+    RedBoosterToggle:Set(redBoosterEnabled)
+    BlueBoosterToggle:Set(blueBoosterEnabled)
+    WealthClockToggle:Set(wealthClockEnabled)
+
+    -- Update owned hive after claiming
+    ownedHive = getOwnedHive()
+    displayHiveName = ownedHive and "Hive" or "None"
+
+    -- Initialize honey tracking - STARTS AT 0
+    honeyStats.startHoney = getCurrentHoney()
+    honeyStats.currentHoney = honeyStats.startHoney
+    honeyStats.lastHoneyValue = honeyStats.startHoney
+    honeyStats.trackingStarted = false
+    honeyStats.firstAutoFarmEnabled = false
+    honeyStats.honeyMade = 0
+    honeyStats.hourlyRate = 0
+    honeyStats.sessionHoney = 0
+    honeyStats.dailyHoney = 0
+
+    -- Run anti-lag on startup if enabled
+    if toggles.antiLag then
+        addToConsole("Running startup Anti-Lag...")
+        runAntiLag()
     end
-end)
 
--- 🎄 Load settings on startup
-loadSettings()
-
--- 🎅 Apply loaded settings to GUI
-FieldDropdown:Set(toggles.field)
-AutoFarmToggle:Set(toggles.autoFarm)
-AutoDigToggle:Set(toggles.autoDig)
-AutoEquipToggle:Set(toggles.autoEquip)
-AntiLagToggle:Set(toggles.antiLag)
-MovementMethodDropdown:Set(toggles.movementMethod)
-TweenSpeedSlider:Set(toggles.tweenSpeed)
-WalkspeedToggle:Set(toggles.walkspeedEnabled)
-WalkspeedSlider:Set(toggles.walkspeed)
-AutoSprinklersToggle:Set(autoSprinklersEnabled)
-SprinklerDropdown:Set(selectedSprinkler)
-WebhookToggle:Set(webhookEnabled)
-WebhookURLBox:Set(webhookURL)
-WebhookIntervalSlider:Set(webhookInterval)
-TicketConvertersToggle:Set(useTicketConverters)
-MountainBoosterToggle:Set(mountainBoosterEnabled)
-RedBoosterToggle:Set(redBoosterEnabled)
-BlueBoosterToggle:Set(blueBoosterEnabled)
-WealthClockToggle:Set(wealthClockEnabled)
-
--- 🏠 Update owned hive after claiming
-ownedHive = getOwnedHive()
-displayHiveName = ownedHive and "🏠 Hive" or "💔 None"
-
--- 🍯 Initialize honey tracking - STARTS AT 0
-honeyStats.startHoney = getCurrentHoney()
-honeyStats.currentHoney = honeyStats.startHoney
-honeyStats.lastHoneyValue = honeyStats.startHoney
-honeyStats.trackingStarted = false
-honeyStats.firstAutoFarmEnabled = false
-honeyStats.honeyMade = 0
-honeyStats.hourlyRate = 0
-honeyStats.sessionHoney = 0
-honeyStats.dailyHoney = 0
-
--- 🎄 Run anti-lag on startup if enabled
-if toggles.antiLag then
-    addToConsole("🎄 Running startup Anti-Lag...")
-    runAntiLag()
+    addToConsole("✅ Lavender Hub v0.5 Ready!")
+    addToConsole("🎯 Auto Farm System Ready!")
+    addToConsole("🚿 IMPROVED Auto Sprinklers System Ready!")
+    addToConsole("💀 Death Respawn System Ready!")
+    addToConsole("🌐 Webhook System Ready!")
+    addToConsole("🎫 Ticket Converters System Ready!")
+    addToConsole("🎁 Toys/Boosters System Ready!")
+    addToConsole("🔑 Auto Hive Claiming System Ready!")
+    if ownedHive then
+        addToConsole("🏠 Owned Hive: " .. ownedHive)
+    else
+        addToConsole("🔄 Auto-claiming hives...")
+    end
 end
 
-addToConsole("🎄 MERRY CHRISTMAS! 🎅")
-addToConsole("✅ 🎄 Lavender Hub v0.6 Ready! ⛄")
-addToConsole("🎯 🎄 Auto Farm System Ready!")
-addToConsole("🚿 🎄 IMPROVED Auto Sprinklers System Ready!")
-addToConsole("💀 🎄 Death Respawn System Ready!")
-addToConsole("🌐 🎄 Webhook System Ready!")
-addToConsole("🎫 🎄 Ticket Converters System Ready!")
-addToConsole("🎁 🎄 Toys/Boosters System Ready!")
-addToConsole("🏠 🎄 Automatic Hive Claiming System Ready!")
-if ownedHive then
-    addToConsole("🏠 🎄 Owned Hive: " .. ownedHive)
+-- Start Key System
+if not keyVerified then
+    createKeySystem()
 else
-    addToConsole("💔 🎄 No hive owned - will auto-claim every 5s")
-end
+    loadMainGUI()
+    end
